@@ -5,7 +5,7 @@ def parse_args():
     parser.add_argument('--lr', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--batch', default=4096, type=int, help='training batch size')
     parser.add_argument('--tst_batch', default=256, type=int, help='testing batch size (number of users)')
-    parser.add_argument('--epoch', default=100, type=int, help='number of epochs')
+    parser.add_argument('--epoch', default=50, type=int, help='number of epochs')
     parser.add_argument('--save_path', default='tem', help='file name to save model and training record')
     parser.add_argument('--load_model', default=None, help='model name to load')
     parser.add_argument('--tst_epoch', default=1, type=int, help='number of epoch to test while training')
