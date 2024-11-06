@@ -1,2 +1,88 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+*.whl
+
+# PyInstaller
+# Usually these files are written by a Python script from a template
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# dotenv
+.env
+.env.*
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# Cython debug symbols
+cython_debug/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Local Conda environments
+*.conda
+*.env
+
+# MacOS
+.DS_Store
+
+# Logs
+logs/
+*.log
+*.out
+*.err
+
 extract_code_structure.py
 .DS_Store
+Models/
+datasets/
