@@ -1,7 +1,7 @@
 import torch as t
 from torch import nn
 import Utils.TimeLogger as logger
-from Utils.TimeLogger import log
+from Utils.TimeLogger import log, get_human_like_epoch_run_time
 from params import args
 from model import Expert, Feat_Projector, Adj_Projector, AnyGraph
 from data_handler import MultiDataHandler, DataHandler
@@ -57,8 +57,6 @@ class Exp:
             reses = self.train_epoch()
             log(self.make_print('Train', ep, reses, tst_flag))
             self.multi_handler.remake_initial_projections()
-            end_time = time.time()
-            print(f'NOTICE: {end_time-start_time}')
             if tst_flag:
                 for handler_group_id in range(len(self.multi_handler.tst_handlers_group)):
                     tst_handlers = self.multi_handler.tst_handlers_group[handler_group_id]
@@ -78,9 +76,12 @@ class Exp:
                         best_ep = ep
                 self.save_history()
             print()
+            end_time = time.time()
+            hours, minutes, seconds ,milliseconds = get_human_like_epoch_run_time(end_time-start_time)
+            print(f'NOTICE: Epoch train run time = {hours}[h]::{minutes}[min]::{seconds}[s].{milliseconds}[ms]')
 
         for test_group_id in range(len(self.multi_handler.tst_handlers_group)):
-            repeat_times = 5
+            repeat_times = 1
             overall_recall, overall_ndcg = np.zeros(repeat_times), np.zeros(repeat_times)
             overall_tstnum = 0
             tst_handlers = self.multi_handler.tst_handlers_group[test_group_id]
@@ -285,16 +286,16 @@ if __name__ == '__main__':
         'amazon-book', 'yelp2018', 'gowalla', 'yelp_textfeat', 'amazon_textfeat', 'steam_textfeat', 'Goodreads', 'Fitness', 'Photo', 'ml1m', 'ml10m', 'products_home', 'products_tech'
     ]
     datasets['academic'] = [
-        'cora', 'pubmed', 'citeseer', 'CS', 'arxiv', 'arxiv-ta', 'citation-2019', 'citation-classic', 'collab'
+        'cora', #'pubmed', 'citeseer', 'CS', 'arxiv', 'arxiv-ta', 'citation-2019', 'citation-classic', 'collab'
     ]
     datasets['others'] = [
         'ddi', 'ppa', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'email-Enron', 'web-Stanford', 'roadNet-PA', 'p2p-Gnutella06', 'soc-Epinions1'
     ]
     datasets['link1'] = [
-        'products_tech', 'yelp2018', 'yelp_textfeat', 'products_home', 'steam_textfeat', 'amazon_textfeat', 'amazon-book', 'citation-2019', 'citation-classic', 'pubmed', 'citeseer', 'ppa', 'p2p-Gnutella06', 'soc-Epinions1', 'email-Enron',
+        'products_tech', 'yelp2018', #'yelp_textfeat', 'products_home', #'steam_textfeat', 'amazon_textfeat', 'amazon-book', 'citation-2019', 'citation-classic', 'pubmed', 'citeseer', 'ppa', 'p2p-Gnutella06', 'soc-Epinions1', 'email-Enron',
     ]
     datasets['link2'] = [
-        'Photo', 'Goodreads', 'Fitness', 'ml1m', 'ml10m', 'gowalla', 'arxiv', 'arxiv-ta', 'cora', 'CS', 'collab', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'ddi', 'web-Stanford', 'roadNet-PA',
+        'Photo', 'Fitness', #'Goodreads', 'ml1m', 'ml10m', 'gowalla', 'arxiv', 'arxiv-ta', 'cora', 'CS', 'collab', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'ddi', 'web-Stanford', 'roadNet-PA',
     ]
 
     if args.dataset_setting in datasets.keys():
