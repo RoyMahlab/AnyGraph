@@ -11,6 +11,9 @@ import os
 import setproctitle
 import time
 
+from my_utils import get_root_directory
+root = get_root_directory()
+
 class Exp:
     def __init__(self, multi_handler):
         self.multi_handler = multi_handler
@@ -56,6 +59,7 @@ class Exp:
             self.model.assign_experts(self.multi_handler.trn_handlers, reca=True, log_assignment=True)
             reses = self.train_epoch()
             log(self.make_print('Train', ep, reses, tst_flag))
+            ### LOG ### - log train loss here
             self.multi_handler.remake_initial_projections()
             if tst_flag:
                 for handler_group_id in range(len(self.multi_handler.tst_handlers_group)):
@@ -68,7 +72,7 @@ class Exp:
                         recall += reses['Recall'] * reses['tstNum']
                         ndcg += reses['NDCG'] * reses['tstNum']
                         tstnum += reses['tstNum']
-                    reses = {'Recall': recall / tstnum, 'NDCG': ndcg / tstnum}
+                    reses = {'Recall': recall / tstnum, 'NDCG': ndcg / tstnum}  ### LOG ###
                     log(self.make_print('Test'+str(handler_group_id), ep, reses, tst_flag))
 
                     if reses['NDCG'] > best_ndcg:
@@ -77,7 +81,7 @@ class Exp:
                 self.save_history()
             print()
             end_time = time.time()
-            hours, minutes, seconds ,milliseconds = get_human_like_epoch_run_time(end_time-start_time)
+            hours, minutes, seconds ,milliseconds = get_human_like_epoch_run_time(end_time-start_time) ### LOG ###
             print(f'NOTICE: Epoch train run time = {hours}[h]::{minutes}[min]::{seconds}[s].{milliseconds}[ms]')
 
         for test_group_id in range(len(self.multi_handler.tst_handlers_group)):
@@ -160,7 +164,7 @@ class Exp:
                 steps -= 1
                 continue
 
-            expert = self.model.summon(dataset_id)
+            expert, expert_id = self.model.summon(dataset_id)
             opt = self.model.summon_opt(dataset_id)
             feats = self.multi_handler.trn_handlers[dataset_id].projectors
             loss, loss_dict = expert.cal_loss((ancs, poss, negs), feats)
@@ -197,7 +201,7 @@ class Exp:
         with t.no_grad():
             tst_loader = handler.tst_loader
             self.model.eval()
-            expert = self.model.summon(dataset_id)
+            expert, _ = self.model.summon(dataset_id)
             ep_recall, ep_ndcg = 0, 0
             ep_tstnum = len(tst_loader.dataset)
             steps = max(ep_tstnum // args.tst_batch, 1)
@@ -246,21 +250,21 @@ class Exp:
     def save_history(self):
         if args.epoch == 0:
             return
-        with open('./History/' + args.save_path + '.his', 'wb') as fs:
+        with open(root + '/History/' + args.save_path + '.his', 'wb') as fs:
             pickle.dump(self.metrics, fs)
 
         content = {
             'model': self.model,
         }
-        t.save(content, './Models/' + args.save_path + '.mod')
+        t.save(content, root + '/Models/' + args.save_path + '.mod')
         log('Model Saved: %s' % args.save_path)
 
     def load_model(self):
-        ckp = t.load('./Models/' + args.load_model + '.mod')
+        ckp = t.load(root + '/Models/' + args.load_model + '.mod')
         self.model = ckp['model']
         self.opt = t.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=0)
 
-        with open('./History/' + args.load_model + '.his', 'rb') as fs:
+        with open(root + '/History/' + args.load_model + '.his', 'rb') as fs:
             self.metrics = pickle.load(fs)
         log('Model Loaded')
 

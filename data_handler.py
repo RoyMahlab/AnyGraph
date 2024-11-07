@@ -10,6 +10,9 @@ import torch_geometric.transforms as T
 from model import Feat_Projector, Adj_Projector, TopoEncoder
 import os
 
+from my_utils import get_root_directory
+root = get_root_directory()
+
 class MultiDataHandler:
     def __init__(self, trn_datasets, tst_datasets_group):
         all_datasets = trn_datasets
@@ -55,7 +58,7 @@ class DataHandler:
         self.load_data()
     
     def get_data_files(self):
-        predir = f'datasets/{self.data_name}/'
+        predir = root + f'datasets/{self.data_name}/'
         if os.path.exists(predir + 'feats.pkl'):
             self.feat_file = predir + 'feats.pkl'
         else:
