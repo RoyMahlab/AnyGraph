@@ -39,5 +39,8 @@ def parse_args():
     parser.add_argument('--nn', default='mlp', type=str, help='what trainable network to use')
     parser.add_argument('--proj_trn_steps', default=100, type=int, help='number of training steps for one initial projection')
     parser.add_argument('--attempt_cache', default=10000000, type=int, help='number of training steps for one initial projection')
+    parser.add_argument('--use_wandb', default=False, type=bool, help='using wandb logger')
+    parser.add_argument('--project', default='anygraph_example', type=str, help='project name')
+    parser.add_argument('--run', default='run1', type=str, help='run name')
     return parser.parse_args()
 args = parse_args()

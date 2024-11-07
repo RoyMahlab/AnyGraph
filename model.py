@@ -312,7 +312,8 @@ class AnyGraph(nn.Module):
             self.assignment = list(map(lambda x: x[0][0], assignment))
     
     def summon(self, dataset_id):
-        return self.experts[self.assignment[dataset_id]]
+        expert_id = self.assignment[dataset_id]
+        return self.experts[expert_id], expert_id
     
     def summon_opt(self, dataset_id):
         return self.opts[self.assignment[dataset_id]]

@@ -58,7 +58,7 @@ class DataHandler:
         self.load_data()
     
     def get_data_files(self):
-        predir = root + f'datasets/{self.data_name}/'
+        predir = root + f'/datasets/{self.data_name}/'
         if os.path.exists(predir + 'feats.pkl'):
             self.feat_file = predir + 'feats.pkl'
         else:

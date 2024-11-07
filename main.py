@@ -11,7 +11,7 @@ import os
 import setproctitle
 import time
 
-from my_utils import get_root_directory
+from my_utils import get_root_directory, initialize_wandb
 root = get_root_directory()
 
 class Exp:
@@ -327,6 +327,9 @@ if __name__ == '__main__':
         handler = MultiDataHandler(trn_datasets, [trn_datasets, tst_datasets])
     log('Load Data')
 
+    if args.use_wandb:
+        initialize_wandb(args)
+    
     exp = Exp(handler)
     exp.run()
     print(args.load_model, args.dataset_setting)
