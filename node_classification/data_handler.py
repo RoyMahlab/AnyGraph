@@ -9,6 +9,17 @@ import torch.utils.data as data
 import torch_geometric.transforms as T
 from model import Feat_Projector, Adj_Projector, TopoEncoder
 import os
+import rootutils
+
+def get_root_directory() -> str:
+    # Automatically find and set the root directory
+    root = rootutils.setup_root(
+        search_from=__file__,  # Start searching from the current file location
+    ).__str__()
+    print(f"root = {root}")
+    return root
+
+root = get_root_directory()
 
 class MultiDataHandler:
     def __init__(self, trn_datasets, tst_datasets_group):
@@ -55,8 +66,7 @@ class DataHandler:
         self.load_data()
     
     def get_data_files(self):
-        predir = f'/home/user_name/data/zero-shot datasets/node_data/{self.data_name}/'
-        # predir = f'../handle_node_data/{self.data_name}/'
+        predir = root + f'/datasets/node_data/{self.data_name}/'
         if os.path.exists(predir + 'feats.pkl'):
             self.feat_file = predir + 'feats.pkl'
         else:
@@ -67,6 +77,7 @@ class DataHandler:
         self.valfile = predir + 'val_mat.pkl'
 
     def load_one_file(self, filename):
+        print(__file__)
         with open(filename, 'rb') as fs:
             ret = (pickle.load(fs) != 0).astype(np.float32)
         if type(ret) != coo_matrix:

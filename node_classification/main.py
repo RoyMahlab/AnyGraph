@@ -4,13 +4,14 @@ import Utils.TimeLogger as logger
 from Utils.TimeLogger import log
 from params import args
 from model import Expert, Feat_Projector, Adj_Projector, AnyGraph
-from data_handler import MultiDataHandler, DataHandler
+from data_handler import MultiDataHandler, DataHandler, get_root_directory
 import numpy as np
 import pickle
 import os
 import setproctitle
 import time
 from sklearn.metrics import f1_score
+root = get_root_directory()
 
 class Exp:
     def __init__(self, multi_handler):
@@ -282,22 +283,22 @@ class Exp:
     def save_history(self):
         if args.epoch == 0:
             return
-        with open('../History/' + args.save_path + '.his', 'wb') as fs:
+        with open(root+'/History/' + args.save_path + '.his', 'wb') as fs:
             pickle.dump(self.metrics, fs)
 
         content = {
             'model': self.model,
         }
-        t.save(content, '../Models/' + args.save_path + '.mod')
+        t.save(content, root+'/Models/' + args.save_path + '.mod')
         log('Model Saved: %s' % args.save_path)
 
     def load_model(self):
-        ckp = t.load('../Models/' + args.load_model + '.mod')
+        ckp = t.load(root+'/Models/' + args.load_model + '.mod')
         self.model = ckp['model']
         # self.model.set_initial_projection(self.handler.torch_adj)
         self.opt = t.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=0)
 
-        with open('../History/' + args.load_model + '.his', 'rb') as fs:
+        with open(root+'/History/' + args.load_model + '.his', 'rb') as fs:
             self.metrics = pickle.load(fs)
         log('Model Loaded')
 
