@@ -62,6 +62,7 @@ class Exp:
             self.model.assign_experts(self.multi_handler.trn_handlers, reca=True, log_assignment=True)
             reses = self.train_epoch()
             log(self.make_print('Train', ep, reses, tst_flag))
+            exit(0)
             ### LOG ### - log train loss here
             if args.use_wandb:
                 wandb.log(data={"train_loss": reses['Loss']}, step=ep)
@@ -164,6 +165,8 @@ class Exp:
         counter = [0] * len(self.multi_handler.trn_handlers)
         reassign_steps = sum(list(map(lambda x: x.reproj_steps, self.multi_handler.trn_handlers)))
         for i, batch_data in enumerate(trn_loader):
+            if i > 1:
+                break
             if args.epoch_max_step > 0 and i >= args.epoch_max_step:
                 break
             ancs, poss, negs, dataset_id = batch_data
@@ -177,6 +180,7 @@ class Exp:
                 continue
 
             expert, expert_id = self.model.summon(dataset_id)
+            # print(f"{expert_id=}")
             opt = self.model.summon_opt(dataset_id)
             feats = self.multi_handler.trn_handlers[dataset_id].projectors
             loss, loss_dict = expert.cal_loss((ancs, poss, negs), feats)
@@ -310,10 +314,10 @@ if __name__ == '__main__':
         'ddi', 'ppa', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'email-Enron', 'web-Stanford', 'roadNet-PA', 'p2p-Gnutella06', 'soc-Epinions1'
     ]
     datasets['link1'] = [
-        'products_tech', 'yelp2018', #'yelp_textfeat', 'products_home', #'steam_textfeat', 'amazon_textfeat', 'amazon-book', 'citation-2019', 'citation-classic', 'pubmed', 'citeseer', 'ppa', 'p2p-Gnutella06', 'soc-Epinions1', 'email-Enron',
+        'products_tech', #'yelp2018', #'yelp_textfeat', 'products_home', #'steam_textfeat', 'amazon_textfeat', 'amazon-book', 'citation-2019', 'citation-classic', 'pubmed', 'citeseer', 'ppa', 'p2p-Gnutella06', 'soc-Epinions1', 'email-Enron',
     ]
     datasets['link2'] = [
-        'Photo', 'Fitness', #'Goodreads', 'ml1m', 'ml10m', 'gowalla', 'arxiv', 'arxiv-ta', 'cora', 'CS', 'collab', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'ddi', 'web-Stanford', 'roadNet-PA',
+        'Photo', #'Fitness', #'Goodreads', 'ml1m', 'ml10m', 'gowalla', 'arxiv', 'arxiv-ta', 'cora', 'CS', 'collab', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'ddi', 'web-Stanford', 'roadNet-PA',
     ]
 
     if args.dataset_setting in datasets.keys():

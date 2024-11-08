@@ -6,6 +6,7 @@ import numpy as np
 from Utils.TimeLogger import log
 from torch.nn import MultiheadAttention
 from time import time
+from my_utils import initialize_seed
 
 init = nn.init.xavier_uniform_
 uniformInit = nn.init.uniform_
@@ -197,7 +198,12 @@ class Adj_Projector(nn.Module):
             svd_v = t.concat([svd_v, t.zeros([svd_v.shape[0], args.latdim-dim]).to(args.devices[0])], dim=1)
             s = t.concat([s, t.zeros(args.latdim-dim).to(args.devices[0])])
         else:
-            svd_u, s, svd_v = t.svd_lowrank(adj, q=q, niter=args.niter)
+            # initialize_seed()
+            svd_u, s, svd_v = t.svd_lowrank(adj.to_dense(), q=q, niter=args.niter)
+        # print(f"args.niter: {args.niter=}")
+        # print(f"q: {q=}")
+        # print(f"adj: {adj.sum()=}")
+        # print(f"svd_u: {svd_u.sum()=}")
         svd_u = svd_u @ t.diag(t.sqrt(s))
         svd_v = svd_v @ t.diag(t.sqrt(s))
         if adj.shape[0] != adj.shape[1]:
