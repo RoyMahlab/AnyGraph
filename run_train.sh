@@ -1,0 +1,1 @@
+python main.py --epoch 1 --dataset link1+link2 --save pretrain_link1

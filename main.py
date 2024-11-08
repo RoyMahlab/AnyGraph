@@ -11,7 +11,10 @@ import os
 import setproctitle
 import time
 
-from my_utils import get_root_directory, initialize_wandb
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+t.use_deterministic_algorithms(True)
+import wandb
+from my_utils import get_root_directory, initialize_wandb, initialize_seed
 root = get_root_directory()
 
 class Exp:
@@ -60,6 +63,8 @@ class Exp:
             reses = self.train_epoch()
             log(self.make_print('Train', ep, reses, tst_flag))
             ### LOG ### - log train loss here
+            if args.use_wandb:
+                wandb.log(data={"train_loss": reses['Loss']}, step=ep)
             self.multi_handler.remake_initial_projections()
             if tst_flag:
                 for handler_group_id in range(len(self.multi_handler.tst_handlers_group)):
@@ -74,14 +79,21 @@ class Exp:
                         tstnum += reses['tstNum']
                     reses = {'Recall': recall / tstnum, 'NDCG': ndcg / tstnum}  ### LOG ###
                     log(self.make_print('Test'+str(handler_group_id), ep, reses, tst_flag))
-
+                    if args.use_wandb:
+                        wandb.log(data={f"Recall_dataset_{handler_group_id}": reses['Recall'],
+                                        f"NDCG_dataset_{handler_group_id}": reses['NDCG']},
+                                        step=ep)
                     if reses['NDCG'] > best_ndcg:
                         best_ndcg = reses['NDCG']
                         best_ep = ep
                 self.save_history()
             print()
-            end_time = time.time()
-            hours, minutes, seconds ,milliseconds = get_human_like_epoch_run_time(end_time-start_time) ### LOG ###
+            epoch_elapesed_time = time.time() - start_time            
+            
+            if args.use_wandb:
+                wandb.log(data={"epoch_elapesed_time": epoch_elapesed_time}, step=ep)
+                
+            hours, minutes, seconds ,milliseconds = get_human_like_epoch_run_time(epoch_elapesed_time) ### LOG ###
             print(f'NOTICE: Epoch train run time = {hours}[h]::{minutes}[min]::{seconds}[s].{milliseconds}[ms]')
 
         for test_group_id in range(len(self.multi_handler.tst_handlers_group)):
@@ -177,7 +189,7 @@ class Exp:
             ep_loss += loss.item() * sample_num
             ep_preloss += loss_dict['preloss'].item() * sample_num
             ep_regloss += loss_dict['regloss'].item()
-            log('Step %d/%d: loss = %.3f, pre = %.3f, reg = %.3f, pos = %.3f, neg = %.3f        ' % (i, steps, loss, loss_dict['preloss'], loss_dict['regloss'], loss_dict['posloss'], loss_dict['negloss']), save=False, oneline=True)
+            # log('Step %d/%d: loss = %.3f, pre = %.3f, reg = %.3f, pos = %.3f, neg = %.3f        ' % (i, steps, loss, loss_dict['preloss'], loss_dict['regloss'], loss_dict['posloss'], loss_dict['negloss']), save=False, oneline=True)
 
             counter[dataset_id] += 1
             if (counter[dataset_id] + 1) % self.multi_handler.trn_handlers[dataset_id].reproj_steps == 0:
@@ -269,6 +281,7 @@ class Exp:
         log('Model Loaded')
 
 if __name__ == '__main__':
+    initialize_seed()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     if len(args.gpu.split(',')) == 2:
         args.devices = ['cuda:0', 'cuda:1']
@@ -281,6 +294,7 @@ if __name__ == '__main__':
 
     log('Start')
 
+    # add datasets here
     
     datasets = dict()
     datasets['all'] = [
@@ -328,6 +342,7 @@ if __name__ == '__main__':
     log('Load Data')
 
     if args.use_wandb:
+        print(f"{args.use_wandb=}")
         initialize_wandb(args)
     
     exp = Exp(handler)
