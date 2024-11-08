@@ -62,6 +62,7 @@ class Exp:
             self.model.assign_experts(self.multi_handler.trn_handlers, reca=True, log_assignment=True)
             reses = self.train_epoch()
             log(self.make_print('Train', ep, reses, tst_flag))
+            exit(0)
             ### LOG ### - log train loss here
             if args.use_wandb:
                 wandb.log(data={"train_loss": reses['Loss']}, step=ep)
@@ -150,7 +151,7 @@ class Exp:
         print(f'Non-trainable params: {non_trainable_params/1e6}')
 
     def prepare_model(self):
-        self.model = AnyGraph()
+        self.model = AnyGraph().double()
         t.cuda.empty_cache()
         self.print_model_size()
 
@@ -178,7 +179,7 @@ class Exp:
 
             expert, expert_id = self.model.summon(dataset_id)
             opt = self.model.summon_opt(dataset_id)
-            feats = self.multi_handler.trn_handlers[dataset_id].projectors
+            feats = self.multi_handler.trn_handlers[dataset_id].projectors.to(t.float64)
             loss, loss_dict = expert.cal_loss((ancs, poss, negs), feats)
             opt.zero_grad()
             loss.backward()
@@ -189,7 +190,7 @@ class Exp:
             ep_loss += loss.item() * sample_num
             ep_preloss += loss_dict['preloss'].item() * sample_num
             ep_regloss += loss_dict['regloss'].item()
-            # log('Step %d/%d: loss = %.3f, pre = %.3f, reg = %.3f, pos = %.3f, neg = %.3f        ' % (i, steps, loss, loss_dict['preloss'], loss_dict['regloss'], loss_dict['posloss'], loss_dict['negloss']), save=False, oneline=True)
+            log('Step %d/%d: loss = %.3f, pre = %.3f, reg = %.3f, pos = %.3f, neg = %.3f        ' % (i, steps, loss, loss_dict['preloss'], loss_dict['regloss'], loss_dict['posloss'], loss_dict['negloss']), save=False, oneline=True)
 
             counter[dataset_id] += 1
             if (counter[dataset_id] + 1) % self.multi_handler.trn_handlers[dataset_id].reproj_steps == 0:

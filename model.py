@@ -350,7 +350,7 @@ class AnyGraph(nn.Module):
         with t.no_grad():
             assignment = [list() for i in range(len(handlers))]
             for dataset_id, handler in enumerate(handlers):
-                topo_embeds = handler.projectors.to(args.devices[1])
+                topo_embeds = handler.projectors.to(args.devices[1]).to(t.float64)
                 for expert_id, expert in enumerate(self.experts):
                     expert = expert.to(args.devices[1])
                     score = expert.attempt(topo_embeds, handler.trn_loader.dataset)
