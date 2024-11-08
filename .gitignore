@@ -87,3 +87,4 @@ extract_code_structure.py
 Models/
 datasets/
 wandb/
+myenv/

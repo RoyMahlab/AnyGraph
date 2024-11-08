@@ -291,7 +291,7 @@ if __name__ == '__main__':
         args.devices = ['cuda:0', 'cuda:0']
     logger.saveDefault = True
     setproctitle.setproctitle('AnyGraph')
-
+    print(f"using cuda = {t.cuda.is_available()}")
     log('Start')
 
     # add datasets here

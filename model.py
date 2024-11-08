@@ -13,7 +13,8 @@ uniformInit = nn.init.uniform_
 class FeedForwardLayer(nn.Module):
     def __init__(self, in_feat, out_feat, bias=True, act=None):
         super(FeedForwardLayer, self).__init__()
-        self.linear = nn.Linear(in_feat, out_feat, bias=bias)#, dtype=t.bfloat16)
+        self.linear = nn.Linear(in_feat, out_feat, bias=bias)
+        
         if act == 'identity' or act is None:
             self.act = None
         elif act == 'leaky':
@@ -24,54 +25,71 @@ class FeedForwardLayer(nn.Module):
             self.act = nn.ReLU6()
         else:
             raise Exception('Error')
-    
+        self.reset_parameters()
+
     def forward(self, embeds):
         if self.act is None:
             return self.linear(embeds)
         return self.act(self.linear(embeds))
+    
+    def reset_parameters(self):
+        self.linear.reset_parameters()
 
 class TopoEncoder(nn.Module):
     def __init__(self):
         super(TopoEncoder, self).__init__()
 
         self.layer_norm = nn.LayerNorm(args.latdim, elementwise_affine=False)
+        self.reset_parameters()
 
     def forward(self, adj, embeds, normed=False):
         with t.no_grad():
             if not normed:
                 embeds = self.layer_norm(embeds)
-            # embeds_list = []
             final_embeds = 0
             if args.gnn_layer == 0:
                 final_embeds = embeds
-                # embeds_list.append(embeds)
             for _ in range(args.gnn_layer):
                 embeds = t.spmm(adj, embeds)
                 final_embeds += embeds
-                # embeds_list.append(embeds)
-            embeds = final_embeds#sum(embeds_list)
+            embeds = final_embeds
         return embeds
+    
+    def reset_parameters(self):
+        # Reset parameters for LayerNorm if needed
+        self.layer_norm.reset_parameters()
 
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
+        # Dense layers and layer norms are initialized as sequential layers
         self.dense_layers = nn.Sequential(*[FeedForwardLayer(args.latdim, args.latdim, bias=True, act=args.act) for _ in range(args.fc_layer)])
         self.layer_norms = nn.Sequential(*[nn.LayerNorm(args.latdim, elementwise_affine=True) for _ in range(args.fc_layer)])
         self.dropout = nn.Dropout(p=args.drop_rate)
+        self.reset_parameters()
     
     def forward(self, embeds):
         for i in range(args.fc_layer):
             embeds = self.layer_norms[i](self.dropout(self.dense_layers[i](embeds)) + embeds)
         return embeds
+    
+    def reset_parameters(self):
+        # Reset parameters of each dense layer and layer norm
+        for layer in self.dense_layers:
+            layer.reset_parameters()
+        for norm in self.layer_norms:
+            norm.reset_parameters()
 
 class GTLayer(nn.Module):
     def __init__(self):
         super(GTLayer, self).__init__()
-        self.multi_head_attention = MultiheadAttention(args.latdim, args.head, dropout=0.1, bias=False)#, dtype=t.bfloat16)
-        self.dense_layers = nn.Sequential(*[FeedForwardLayer(args.latdim, args.latdim, bias=True, act=args.act) for _ in range(2)])# bias=False
-        self.layer_norm1 = nn.LayerNorm(args.latdim, elementwise_affine=True)#, dtype=t.bfloat16)
-        self.layer_norm2 = nn.LayerNorm(args.latdim, elementwise_affine=True)#, dtype=t.bfloat16)
+        # Initialize MultiheadAttention, dense layers, and layer norms
+        self.multi_head_attention = MultiheadAttention(args.latdim, args.head, dropout=0.1, bias=False)
+        self.dense_layers = nn.Sequential(*[FeedForwardLayer(args.latdim, args.latdim, bias=True, act=args.act) for _ in range(2)])
+        self.layer_norm1 = nn.LayerNorm(args.latdim, elementwise_affine=True)
+        self.layer_norm2 = nn.LayerNorm(args.latdim, elementwise_affine=True)
         self.fc_dropout = nn.Dropout(p=args.drop_rate)
+        self.reset_parameters()
     
     def _pick_anchors(self, embeds):
         perm = t.randperm(embeds.shape[0])
@@ -85,23 +103,40 @@ class GTLayer(nn.Module):
         _embeds, _ = self.multi_head_attention(embeds, anchor_embeds, anchor_embeds, need_weights=False)
         embeds = self.layer_norm1(_embeds + embeds)
         _embeds = self.fc_dropout(self.dense_layers(embeds))
-        embeds = (self.layer_norm2(_embeds + embeds))
+        embeds = self.layer_norm2(_embeds + embeds)
         return embeds
+    
+    def reset_parameters(self):
+        # Reset parameters of MultiheadAttention, dense layers, and layer norms
+        self.multi_head_attention.reset_parameters()
+        
+        for layer in self.dense_layers:
+            layer.reset_parameters()
+        
+        for norm in [self.layer_norm1, self.layer_norm2]:
+            norm.reset_parameters()
 
 class GraphTransformer(nn.Module):
     def __init__(self):
         super(GraphTransformer, self).__init__()
-        self.gt_layers = nn.Sequential(*[GTLayer() for i in range(args.gt_layer)])
+        # Initialize the sequence of GTLayer instances
+        self.gt_layers = nn.Sequential(*[GTLayer() for _ in range(args.gt_layer)])
+        self.reset_parameters()
 
     def forward(self, embeds):
         for i, layer in enumerate(self.gt_layers):
             embeds = layer(embeds) / args.scale_layer
         return embeds
+    
+    def reset_parameters(self):
+        # Reset parameters of all GTLayer instances
+        for layer in self.gt_layers:
+            layer.reset_parameters()
 
 class Feat_Projector(nn.Module):
     def __init__(self, feats):
         super(Feat_Projector, self).__init__()
-
+        
         if args.proj_method == 'uniform':
             self.proj_embeds = self.uniform_proj(feats)
         elif args.proj_method == 'svd' or args.proj_method == 'both':
@@ -112,7 +147,8 @@ class Feat_Projector(nn.Module):
             self.proj_embeds = feats
         self.proj_embeds = t.flip(self.proj_embeds, dims=[-1])
         self.proj_embeds = self.proj_embeds.detach()
-    
+        self.reset_parameters(feats)
+
     def svd_proj(self, feats):
         if args.latdim > feats.shape[0] or args.latdim > feats.shape[1]:
             dim = min(feats.shape[0], feats.shape[1])
@@ -123,17 +159,25 @@ class Feat_Projector(nn.Module):
             decom_feats, s, decom_featdim = t.svd_lowrank(feats, q=args.latdim, niter=args.niter)
         decom_feats = decom_feats @ t.diag(t.sqrt(s))
         return decom_feats.cpu()
-    
+
     def uniform_proj(self, feats):
         projection = init(t.empty(args.featdim, args.latdim))
         return feats @ projection
-    
+
     def random_proj(self, feats):
         projection = init(t.empty(feats.shape[0], args.latdim))
         return projection
-    
+
     def forward(self):
         return self.proj_embeds
+
+    def reset_parameters(self, feats):
+        if args.proj_method == 'uniform':
+            # Reinitialize the uniform projection
+            self.proj_embeds = self.uniform_proj(feats)
+        elif args.proj_method == 'random':
+            # Reinitialize the random projection
+            self.proj_embeds = self.random_proj(feats)
 
 class Adj_Projector(nn.Module):
     def __init__(self, adj):
@@ -142,7 +186,8 @@ class Adj_Projector(nn.Module):
         if args.proj_method == 'adj_svd' or args.proj_method == 'both':
             self.proj_embeds = self.svd_proj(adj)
         self.proj_embeds = self.proj_embeds.detach()
-    
+        self.reset_parameters(adj)
+
     def svd_proj(self, adj):
         q = args.latdim
         if args.latdim > adj.shape[0] or args.latdim > adj.shape[1]:
@@ -160,9 +205,14 @@ class Adj_Projector(nn.Module):
         else:
             projection = svd_u + svd_v
         return projection.cpu()
-    
+
     def forward(self):
         return self.proj_embeds
+
+    def reset_parameters(self, adj):
+        # Reinitialize the projection based on the new adj matrix
+        if args.proj_method == 'adj_svd' or args.proj_method == 'both':
+            self.proj_embeds = self.svd_proj(adj)
 
 class Expert(nn.Module):
     def __init__(self):
@@ -174,6 +224,7 @@ class Expert(nn.Module):
         else:
             self.trainable_nn = GraphTransformer().to(args.devices[1])
         self.trn_count = 1
+        self.reset_parameters()
     
     def forward(self, projectors, pck_nodes=None):
         embeds = projectors.to(args.devices[1])
@@ -196,7 +247,6 @@ class Expert(nn.Module):
         self.trn_count += ancs.shape[0]
         pck_nodes = t.concat([ancs, poss, negs])
         final_embeds = self.forward(projectors, pck_nodes)
-        # anc_embeds, pos_embeds, neg_embeds = final_embeds[ancs], final_embeds[poss], final_embeds[negs]
         anc_embeds, pos_embeds, neg_embeds = t.split(final_embeds, [ancs.shape[0]] * 3)
         if final_embeds.isinf().any() or final_embeds.isnan().any():
             raise Exception('Final embedding fails')
@@ -274,11 +324,19 @@ class Expert(nn.Module):
         t.cuda.empty_cache()
         return score
 
+    def reset_parameters(self):
+        # Reset the parameters of the trainable neural network (MLP or GraphTransformer)
+        if isinstance(self.trainable_nn, MLP):
+            self.trainable_nn.reset_parameters()
+        elif isinstance(self.trainable_nn, GraphTransformer):
+            self.trainable_nn.reset_parameters()
+
 class AnyGraph(nn.Module):
     def __init__(self):
         super(AnyGraph, self).__init__()
         self.experts = nn.ModuleList([Expert() for _ in range(args.expert_num)]).cuda()
         self.opts = list(map(lambda expert: t.optim.Adam(expert.parameters(), lr=args.lr, weight_decay=0), self.experts))
+        self.reset_parameters()
         
     def assign_experts(self, handlers, reca=True, log_assignment=False):
         if args.expert_num == 1:
@@ -317,3 +375,8 @@ class AnyGraph(nn.Module):
     
     def summon_opt(self, dataset_id):
         return self.opts[self.assignment[dataset_id]]
+
+    def reset_parameters(self):
+        # Reset the parameters of all experts in the list
+        for expert in self.experts:
+            expert.reset_parameters()
