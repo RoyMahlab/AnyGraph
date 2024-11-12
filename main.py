@@ -11,8 +11,6 @@ import os
 import setproctitle
 import time
 
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-t.use_deterministic_algorithms(True)
 import wandb
 from my_utils import get_root_directory, initialize_wandb, initialize_seed
 root = get_root_directory()
@@ -41,7 +39,7 @@ class Exp:
             ret = 'Epoch %d/%d, %s %s: ' % (ep, args.epoch, data_name, name)
         for metric in reses:
             val = reses[metric]
-            ret += '%s = %.4f, ' % (metric, val)
+            ret += '%s = %f, ' % (metric, val)
             tem = name + metric if data_name is None else name + data_name + metric
             if save and tem in self.metrics:
                 self.metrics[tem].append(val)
@@ -62,7 +60,6 @@ class Exp:
             self.model.assign_experts(self.multi_handler.trn_handlers, reca=True, log_assignment=True)
             reses = self.train_epoch()
             log(self.make_print('Train', ep, reses, tst_flag))
-            exit(0)
             ### LOG ### - log train loss here
             if args.use_wandb:
                 wandb.log(data={"train_loss": reses['Loss']}, step=ep)
@@ -165,8 +162,6 @@ class Exp:
         counter = [0] * len(self.multi_handler.trn_handlers)
         reassign_steps = sum(list(map(lambda x: x.reproj_steps, self.multi_handler.trn_handlers)))
         for i, batch_data in enumerate(trn_loader):
-            if i > 1:
-                break
             if args.epoch_max_step > 0 and i >= args.epoch_max_step:
                 break
             ancs, poss, negs, dataset_id = batch_data
@@ -180,7 +175,6 @@ class Exp:
                 continue
 
             expert, expert_id = self.model.summon(dataset_id)
-            # print(f"{expert_id=}")
             opt = self.model.summon_opt(dataset_id)
             feats = self.multi_handler.trn_handlers[dataset_id].projectors
             loss, loss_dict = expert.cal_loss((ancs, poss, negs), feats)

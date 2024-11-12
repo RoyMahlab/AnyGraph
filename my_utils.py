@@ -21,9 +21,9 @@ def initialize_seed(seed: int = 42) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
     print(f"Initialized seed to {seed}")
+    
+def convert_torch_tensor_to_torch_sparse_coo_tensor(tensor: torch.Tensor) -> torch.sparse_coo_tensor:
+    indices = tensor.nonzero().t()
+    values = tensor[tensor.nonzero().t().unbind()]
+    return torch.sparse_coo_tensor(indices, values, tensor.size())
