@@ -6,7 +6,6 @@ import scipy.sparse as sp
 from Utils.TimeLogger import log
 import torch as t
 import torch.utils.data as data
-import torch_geometric.transforms as T
 from model import Feat_Projector, Adj_Projector, TopoEncoder
 import os
 
@@ -223,8 +222,10 @@ class DataHandler:
                 feats = feats + feats2
 
             try:
+                # print(f"{self.trn_input_adj.sum()=}")
                 self.projectors = self.topo_encoder(self.trn_input_adj.to(args.devices[0]), feats.to(args.devices[0])).detach().cpu()
-            except Exception:
+            except Exception as e:
+                print(e)
                 print(f'{self.data_name} memory overflow')
                 mean, std = feats.mean(dim=-1, keepdim=True), feats.std(dim=-1, keepdim=True)
                 tem_adj = self.trn_input_adj.to(args.devices[0])
