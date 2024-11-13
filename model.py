@@ -379,11 +379,11 @@ class AnyGraph(nn.Module):
             self.assignment = list(map(lambda x: x[0][0], assignment))
     
     def summon(self, dataset_id):
-        expert_id = self.assignment[dataset_id]
-        return self.experts[expert_id], expert_id
+        self.expert_id = t.randint(0, args.expert_num, (1,)).item() # Randomly select an expert
+        return self.experts[self.expert_id], self.expert_id
     
     def summon_opt(self, dataset_id):
-        return self.opts[self.assignment[dataset_id]]
+        return self.opts[self.expert_id]
 
     def reset_parameters(self):
         # Reset the parameters of all experts in the list
