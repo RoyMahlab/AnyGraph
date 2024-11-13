@@ -21,19 +21,19 @@ def seeder():
     torch.set_num_threads(1)
     
 seeder()
+matrix_size = 48362
+nnz = 781_000
+
 
 # Set device to GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-indices = torch.randint(0, 48362, (2, 781_000), dtype=torch.long).to(device)  # 10000 non-zero elements
-values = torch.randn(781_000).to(device)  # Random values for the non-zero elements
-sparse_matrix = torch.sparse_coo_tensor(indices, values, (48362, 48362), device=device)
+indices = torch.randint(0, matrix_size, (2, nnz), dtype=torch.long).to(device)
+values = torch.randn(nnz).to(device) 
+sparse_matrix = torch.sparse_coo_tensor(indices, values, (matrix_size, matrix_size), device=device)
 
 print(f"sparse_matrix = {sparse_matrix}")
-# Parameters for low-rank SVD
-q = 512    # Rank for approximation
-
-# Try disabling power iterations
+q = 512
 niter = 0
 
 # Perform low-rank SVD on the dense matrix
