@@ -206,7 +206,16 @@ class Adj_Projector(nn.Module):
             svd_v = t.concat([svd_v, t.zeros([svd_v.shape[0], args.latdim-dim]).to(args.devices[0])], dim=1)
             s = t.concat([s, t.zeros(args.latdim-dim).to(args.devices[0])])
         else:
-            svd_u, s, svd_v = t.svd_lowrank(adj.to_dense(), q=q, niter=args.niter)
+            degrees = t.sum(adj, dim=-1).to_dense()
+            num_values = degrees.shape[0]
+            indices = t.arange(num_values, device=args.devices[0])
+            degrees = t.sparse_coo_tensor(
+                indices=t.stack([indices, indices]),  # diagonal positions
+                values=degrees,                            # corresponding values
+                size=(num_values, num_values)            # square matrix size
+            )
+            laplacian = degrees - adj
+            svd_u, s, svd_v = t.svd_lowrank(laplacian.to_dense(), q=q, niter=args.niter)
             
         svd_u = svd_u @ t.diag(t.sqrt(s))
         svd_v = svd_v @ t.diag(t.sqrt(s))

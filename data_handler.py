@@ -116,7 +116,8 @@ class DataHandler:
             mat = coo_matrix((data, (row, col)), mat.shape)
             if args.selfloop == 1:
                 mat = (mat + sp.eye(mat.shape[0])) * 1.0
-            normed_asym_mat = self.normalize_adj(mat)
+            # normed_asym_mat = self.normalize_adj(mat)
+            normed_asym_mat = mat
             row = t.from_numpy(normed_asym_mat.row).long()
             col = t.from_numpy(normed_asym_mat.col).long()
             idxs = t.stack([row, col], dim=0)
