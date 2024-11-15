@@ -217,12 +217,12 @@ class Adj_Projector(nn.Module):
             laplacian = degrees - adj
             svd_u, s, svd_v = t.svd_lowrank(laplacian.to_dense(), q=q, niter=args.niter)
             
-        svd_u = svd_u @ t.diag(t.sqrt(s))
-        svd_v = svd_v @ t.diag(t.sqrt(s))
+        # svd_u = svd_u @ t.diag(t.sqrt(s))
+        # svd_v = svd_v @ t.diag(t.sqrt(s))
         if adj.shape[0] != adj.shape[1]:
             projection = t.concat([svd_u, svd_v], dim=0)
         else:
-            projection = svd_u + svd_v
+            projection = (svd_u + svd_v) / 2
         return projection.cpu()
 
     def forward(self):

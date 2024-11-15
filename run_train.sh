@@ -1,1 +1,1 @@
-python main.py --dataset link2 --save pretrain_link1 --project anygraph_lpe --run using_lpe --use_wandb 
+python main.py --dataset link2 --save pretrain_link1 --project anygraph_lpe --run using_lpe_removed_singular_values --use_wandb 
