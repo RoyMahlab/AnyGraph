@@ -1,1 +1,1 @@
-python main.py --dataset link2 --save pretrain_link1 --run run2 --use_wandb 
+python main.py --nn graph_transformer --dataset link2 --save pretrain_link1 --project anygraph_expert_gnn_check --run graph_transformer --use_wandb

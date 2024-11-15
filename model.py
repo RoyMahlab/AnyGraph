@@ -6,10 +6,54 @@ import numpy as np
 from Utils.TimeLogger import log
 from torch.nn import MultiheadAttention
 from time import time
+from torch_geometric.nn import GCNConv
 
 init = nn.init.xavier_uniform_
 uniformInit = nn.init.uniform_
 
+class GCN(t.nn.Module):
+    def __init__(self,
+                 input_dim: int = args.latdim,
+                 hidden_dim: int = args.latdim,
+                 output_dim: int = args.latdim,
+                 num_layers: int = args.fc_layer,
+                 dropout: float = args.drop_rate,
+                 seed: int = 42,
+                 return_embeddings: bool = True,
+                 **kwargs):
+
+        super(GCN, self).__init__()
+        t.manual_seed(seed)
+        self.convs = t.nn.ModuleList([GCNConv(input_dim, hidden_dim)])
+        self.bns = t.nn.ModuleList([t.nn.BatchNorm1d(hidden_dim)])
+
+        for i in range(num_layers - 2):
+            self.convs.append(GCNConv(hidden_dim, hidden_dim))
+            self.bns.append(t.nn.BatchNorm1d(hidden_dim))
+
+        self.convs.append(GCNConv(hidden_dim, output_dim))
+        self.softmax = t.nn.LogSoftmax()
+        self.dropout = dropout
+        self.return_embeddings = return_embeddings
+
+    def reset_parameters(self):
+        for conv in self.convs:
+            conv.reset_parameters()
+        for bn in self.bns:
+            bn.reset_parameters()
+
+    def forward(self, x, adj_t):
+        # [GCN_Conv ->  Batchnorm1d -> Relu -> dropout ]
+        for idx in range(len(self.bns)):
+            x = self.convs[idx](x, adj_t)
+            x = F.relu(x)
+            x = self.bns[idx](x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.convs[-1](x, adj_t)
+        if not self.return_embeddings:
+            x = self.softmax(x)
+        return x
+    
 class FeedForwardLayer(nn.Module):
     def __init__(self, in_feat, out_feat, bias=True, act=None):
         super(FeedForwardLayer, self).__init__()
@@ -106,6 +150,7 @@ class GTLayer(nn.Module):
         return embeds[anchors]
     
     def forward(self, embeds):
+        embeds = embeds.to_dense()
         anchor_embeds = self._pick_anchors(embeds)
         _anchor_embeds, _ = self.multi_head_attention(anchor_embeds, embeds, embeds)
         anchor_embeds = _anchor_embeds + anchor_embeds
@@ -116,9 +161,7 @@ class GTLayer(nn.Module):
         return embeds
     
     def reset_parameters(self):
-        # Reset parameters of MultiheadAttention, dense layers, and layer norms
-        self.multi_head_attention.reset_parameters()
-        
+        # Reset parameters of dense layers, and layer norms
         for layer in self.dense_layers:
             layer.reset_parameters()
         
@@ -230,6 +273,8 @@ class Expert(nn.Module):
         
         if args.nn == 'mlp':
             self.trainable_nn = MLP().to(args.devices[1])
+        elif args.nn == 'gcn':
+            self.trainable_nn = GCN().to(args.devices[1])
         else:
             self.trainable_nn = GraphTransformer().to(args.devices[1])
         self.trn_count = 1
