@@ -24,6 +24,7 @@ class GCN(t.nn.Module):
 
         super(GCN, self).__init__()
         t.manual_seed(seed)
+        self.entry_embeds = FeedForwardLayer(input_dim, hidden_dim)
         self.convs = t.nn.ModuleList([GCNConv(input_dim, hidden_dim)])
         self.bns = t.nn.ModuleList([t.nn.BatchNorm1d(hidden_dim)])
 
@@ -32,6 +33,7 @@ class GCN(t.nn.Module):
             self.bns.append(t.nn.BatchNorm1d(hidden_dim))
 
         self.convs.append(GCNConv(hidden_dim, output_dim))
+        self.output_embeds = FeedForwardLayer(input_dim, hidden_dim)
         self.softmax = t.nn.LogSoftmax()
         self.dropout = dropout
         self.return_embeddings = return_embeddings
@@ -42,14 +44,18 @@ class GCN(t.nn.Module):
         for bn in self.bns:
             bn.reset_parameters()
 
-    def forward(self, x, adj_t):
+    def forward(self, x, edge_index):
         # [GCN_Conv ->  Batchnorm1d -> Relu -> dropout ]
+        embeds = x = self.entry_embeds(x).clone()
         for idx in range(len(self.bns)):
-            x = self.convs[idx](x, adj_t)
-            x = F.relu(x)
+            x = self.convs[idx](x, edge_index)
+            x = F.gelu(x)
             x = self.bns[idx](x)
             x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.convs[-1](x, adj_t)
+            x += embeds
+        x = self.convs[-1](x, edge_index)
+        x += embeds
+        x = self.output_embeds(x)
         if not self.return_embeddings:
             x = self.softmax(x)
         return x
@@ -282,9 +288,26 @@ class Expert(nn.Module):
     
     def forward(self, projectors, pck_nodes=None):
         embeds = projectors.to(args.devices[1]).to_dense()
+        filtered_edge_index = self.edge_index
         if pck_nodes is not None:
             embeds = embeds[pck_nodes]
-        embeds = self.trainable_nn(embeds)
+            if args.nn == 'gcn':
+                filtered_edge_index = self.edge_index
+                source_nodes = self.edge_index[0]
+                target_nodes = self.edge_index[1]
+                source_mask = t.isin(source_nodes, pck_nodes)
+                target_mask = t.isin(target_nodes, pck_nodes)
+                edge_mask = source_mask & target_mask
+                filtered_edge_index = self.edge_index[:, edge_mask]
+                node_mapping = {node.item(): idx for idx, node in enumerate(pck_nodes)}
+                # Apply the mapping to the filtered edge_index
+                filtered_edge_index = t.tensor([[node_mapping[node.item()] for node in filtered_edge_index[0]],
+                                                [node_mapping[node.item()] for node in filtered_edge_index[1]]],
+                                                device=args.devices[1])
+        if args.nn == 'gcn':
+            embeds = self.trainable_nn(embeds, filtered_edge_index)
+        else:
+            embeds = self.trainable_nn(embeds)
         return embeds
 
     def pred_norm(self, pos_preds, neg_preds):
@@ -353,7 +376,13 @@ class Expert(nn.Module):
         return all_preds
 
     def attempt(self, topo_embeds, dataset):
-        final_embeds = self.trainable_nn(topo_embeds)
+        if args.nn == 'gcn':
+            rows = t.tensor(dataset.ancs, dtype=t.long)
+            cols = t.tensor(dataset.poss, dtype=t.long)
+            self.edge_index = t.stack([rows, cols]).to(args.devices[1])
+            final_embeds = self.trainable_nn(topo_embeds, self.edge_index)
+        else:
+            final_embeds = self.trainable_nn(topo_embeds)
         rows, cols, negs = list(map(lambda x: t.from_numpy(x).long().to(args.devices[1]), [dataset.ancs, dataset.poss, dataset.negs]))
         if rows.shape[0] > args.attempt_cache:
             random_perm = t.randperm(rows.shape[0], device=args.devices[0])

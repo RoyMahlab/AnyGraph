@@ -3,7 +3,14 @@ import wandb
 import torch
 import numpy as np
 import random
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 def get_root_directory() -> str:
     # Automatically find and set the root directory
     root = rootutils.setup_root(
