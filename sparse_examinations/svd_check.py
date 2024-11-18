@@ -27,6 +27,7 @@ nnz = 781_000
 
 # Set device to GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device  = torch.device("cpu")
 
 indices = torch.randint(0, matrix_size, (2, nnz), dtype=torch.long).to(device)
 values = torch.randn(nnz).to(device) 
@@ -42,6 +43,6 @@ seeder()
 U2, S2, V2 = torch.svd_lowrank(sparse_matrix, q=q, niter=niter)
 
 # Print results
-print(f"{U1.sum()=}")
-print(f"{U2.sum()=}")
-print(f"{U2.sum() == U1.sum()=}")
+print(f"U1.sum : {U1.sum().item()}")
+print(f"U2.sum : {U2.sum().item()}")
+print(f"U1.sum == U2.sum : {(U2.sum() == U1.sum()).item()}")
