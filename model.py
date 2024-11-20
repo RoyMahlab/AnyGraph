@@ -24,16 +24,15 @@ class GCN(t.nn.Module):
 
         super(GCN, self).__init__()
         t.manual_seed(seed)
-        self.entry_embeds = FeedForwardLayer(input_dim, hidden_dim)
         self.convs = t.nn.ModuleList([GCNConv(input_dim, hidden_dim)])
-        self.bns = t.nn.ModuleList([t.nn.BatchNorm1d(hidden_dim)])
+        self.bns = t.nn.ModuleList([t.nn.LayerNorm(args.latdim, elementwise_affine=True)])
 
         for i in range(num_layers - 2):
             self.convs.append(GCNConv(hidden_dim, hidden_dim))
-            self.bns.append(t.nn.BatchNorm1d(hidden_dim))
+            self.bns.append(t.nn.LayerNorm(args.latdim, elementwise_affine=True))
 
         self.convs.append(GCNConv(hidden_dim, output_dim))
-        self.output_embeds = FeedForwardLayer(input_dim, hidden_dim)
+        self.bns.append(t.nn.LayerNorm(args.latdim, elementwise_affine=True))
         self.softmax = t.nn.LogSoftmax()
         self.dropout = dropout
         self.return_embeddings = return_embeddings
@@ -46,16 +45,13 @@ class GCN(t.nn.Module):
 
     def forward(self, x, edge_index):
         # [GCN_Conv ->  Batchnorm1d -> Relu -> dropout ]
-        embeds = x = self.entry_embeds(x).clone()
         for idx in range(len(self.bns)):
             x = self.convs[idx](x, edge_index)
             x = F.gelu(x)
             x = self.bns[idx](x)
             x = F.dropout(x, p=self.dropout, training=self.training)
-            x += embeds
         x = self.convs[-1](x, edge_index)
-        x += embeds
-        x = self.output_embeds(x)
+        x = self.bns[-1](x)
         if not self.return_embeddings:
             x = self.softmax(x)
         return x
@@ -256,7 +252,7 @@ class Adj_Projector(nn.Module):
             s = t.concat([s, t.zeros(args.latdim-dim).to(args.devices[0])])
         else:
             svd_u, s, svd_v = t.svd_lowrank(adj.to_dense(), q=q, niter=args.niter)
-            
+        
         svd_u = svd_u @ t.diag(t.sqrt(s))
         svd_v = svd_v @ t.diag(t.sqrt(s))
         if adj.shape[0] != adj.shape[1]:
@@ -288,11 +284,11 @@ class Expert(nn.Module):
     
     def forward(self, projectors, pck_nodes=None):
         embeds = projectors.to(args.devices[1]).to_dense()
-        filtered_edge_index = self.edge_index
+        if args.nn == 'gcn':
+            filtered_edge_index = self.edge_index
         if pck_nodes is not None:
             embeds = embeds[pck_nodes]
             if args.nn == 'gcn':
-                filtered_edge_index = self.edge_index
                 source_nodes = self.edge_index[0]
                 target_nodes = self.edge_index[1]
                 source_mask = t.isin(source_nodes, pck_nodes)

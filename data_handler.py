@@ -202,6 +202,7 @@ class DataHandler:
             self.asym_adj = self.trn_input_adj
         else:
             self.asym_adj = self.make_torch_adj(self.trn_mat, unidirectional_for_asym=True)
+        ### do it here ###
         self.make_projectors()
         self.reproj_steps = max(len(self.trn_loader.dataset) // (10 * args.batch), args.proj_trn_steps)
         self.ratio_500_all = 500 / len(self.trn_loader)
