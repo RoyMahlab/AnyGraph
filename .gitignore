@@ -89,3 +89,5 @@ datasets/
 wandb/
 myenv/
 my_new_venv/
+histograms.png
+adj_matrices_svd/
