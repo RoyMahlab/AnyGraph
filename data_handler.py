@@ -10,6 +10,7 @@ from model import Feat_Projector, Adj_Projector, TopoEncoder
 import os
 
 from my_utils import get_root_directory
+from pathlib import Path
 root = get_root_directory()
 
 class MultiDataHandler:
@@ -217,10 +218,15 @@ class DataHandler:
                 projectors.append(Feat_Projector(tem))
             assert args.tst_mode == 'tst' and args.trn_mode == 'train-all' or args.tst_mode == 'val' and args.trn_mode == 'fewshot'
             feats = projectors[0]()
+            file_path = Path(root + f'/adj_matrices/{self.data_name}/datasets.pkl')
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path = file_path.__str__()
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'wb') as fs:
+                t.save(feats, fs)
             if len(projectors) == 2:
                 feats2 = projectors[1]()
                 feats = feats + feats2
-
             try:
                 # print(f"{self.trn_input_adj.sum()=}")
                 self.projectors = self.topo_encoder(self.trn_input_adj.to(args.devices[0]), feats.to(args.devices[0])).detach().cpu()
