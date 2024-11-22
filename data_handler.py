@@ -217,6 +217,10 @@ class DataHandler:
                 projectors.append(Feat_Projector(tem))
             assert args.tst_mode == 'tst' and args.trn_mode == 'train-all' or args.tst_mode == 'val' and args.trn_mode == 'fewshot'
             feats = projectors[0]()
+            size = feats.shape[0], feats.shape[1]
+            mean = 0.0
+            std = t.sqrt(t.tensor(4508.0e-8))
+            feats = t.normal(mean=mean, std=std, size=size).to(feats.device)
             if len(projectors) == 2:
                 feats2 = projectors[1]()
                 feats = feats + feats2
