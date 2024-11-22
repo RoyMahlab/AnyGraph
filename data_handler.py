@@ -219,7 +219,7 @@ class DataHandler:
             feats = projectors[0]()
             size = feats.shape[0], feats.shape[1]
             mean = 0.0
-            std = t.sqrt(t.tensor(4508.0e-8))
+            std = t.sqrt(t.tensor(4508.0e-4))
             feats = t.normal(mean=mean, std=std, size=size).to(feats.device)
             if len(projectors) == 2:
                 feats2 = projectors[1]()
