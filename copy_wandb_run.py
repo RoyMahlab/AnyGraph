@@ -7,7 +7,7 @@ wandb.login()
 src_entity = "roy-mahlab-ben-gurion-university-of-the-negev"
 src_project = "anygraph_expert_gnn_check"
 dst_entity = "roy-mahlab-ben-gurion-university-of-the-negev"
-dst_project = "dst-project"
+dst_project = "anygraph_random_svd_features"
 
 # Initialize the wandb API
 api = wandb.Api()
@@ -25,11 +25,11 @@ for run in runs:
     files = run.files()
 
     # Create a new run in the destination project
-    new_run = wandb.init(project=dst_project, entity=dst_entity, config=run.config, name=run.name,resume="allow")
+    new_run = wandb.init(project=dst_project, entity=dst_entity, config=run.config, name=run.name)
     
     # Log the history to the new run
-    for index, row in history.iterrows():
-        new_run.log(row.to_dict())
+    for index, row in enumerate(history):
+        new_run.log(row)
 
     # Upload the files to the new run
     for file in files:
