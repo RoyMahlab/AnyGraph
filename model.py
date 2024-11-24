@@ -6,10 +6,57 @@ import numpy as np
 from Utils.TimeLogger import log
 from torch.nn import MultiheadAttention
 from time import time
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, GraphConv
 
 init = nn.init.xavier_uniform_
 uniformInit = nn.init.uniform_
+
+class GraphCONV(t.nn.Module):
+    def __init__(self,
+                 input_dim: int = args.latdim,
+                 hidden_dim: int = args.latdim,
+                 output_dim: int = args.latdim,
+                 num_layers: int = args.fc_layer,
+                 dropout: float = args.drop_rate,
+                 seed: int = 42,
+                 return_embeddings: bool = True,
+                 **kwargs):
+
+        super(GraphCONV, self).__init__()
+        t.manual_seed(seed)
+        self.convs = t.nn.ModuleList([GraphConv(input_dim, hidden_dim)])
+        self.bns = t.nn.ModuleList([t.nn.LayerNorm(args.latdim, elementwise_affine=True)])
+
+        for i in range(num_layers - 2):
+            self.convs.append(GraphConv(hidden_dim, hidden_dim))
+            self.bns.append(t.nn.LayerNorm(args.latdim, elementwise_affine=True))
+
+        self.convs.append(GraphConv(hidden_dim, output_dim))
+        self.bns.append(t.nn.LayerNorm(args.latdim, elementwise_affine=True))
+        self.softmax = t.nn.LogSoftmax()
+        self.dropout = dropout
+        self.return_embeddings = return_embeddings
+
+    def reset_parameters(self):
+        for conv in self.convs:
+            conv.reset_parameters()
+        for bn in self.bns:
+            bn.reset_parameters()
+
+    def forward(self, x, edge_index):
+        # [GCN_Conv ->  Batchnorm1d -> Relu -> dropout ]
+        x = x.to_dense()
+        for idx in range(len(self.bns)):
+            x = self.convs[idx](x, edge_index)
+            x = F.gelu(x)
+            x = self.bns[idx](x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.convs[-1](x, edge_index)
+        x = self.bns[-1](x)
+        if not self.return_embeddings:
+            x = self.softmax(x)
+        return x
+
 
 class GCN(t.nn.Module):
     def __init__(self,
@@ -277,6 +324,8 @@ class Expert(nn.Module):
             self.trainable_nn = MLP().to(args.devices[1])
         elif args.nn == 'gcn':
             self.trainable_nn = GCN().to(args.devices[1])
+        elif args.nn == 'graphconv':
+            self.trainable_nn = GraphCONV().to(args.devices[1])
         else:
             self.trainable_nn = GraphTransformer().to(args.devices[1])
         self.trn_count = 1
@@ -284,11 +333,11 @@ class Expert(nn.Module):
     
     def forward(self, projectors, pck_nodes=None):
         embeds = projectors.to(args.devices[1]).to_dense()
-        if args.nn == 'gcn':
+        if args.nn == 'gcn' or args.nn == 'graphconv':
             filtered_edge_index = self.edge_index
         if pck_nodes is not None:
             embeds = embeds[pck_nodes]
-            if args.nn == 'gcn':
+            if args.nn == 'gcn' or args.nn == 'graphconv':
                 source_nodes = self.edge_index[0]
                 target_nodes = self.edge_index[1]
                 source_mask = t.isin(source_nodes, pck_nodes)
@@ -300,7 +349,7 @@ class Expert(nn.Module):
                 filtered_edge_index = t.tensor([[node_mapping[node.item()] for node in filtered_edge_index[0]],
                                                 [node_mapping[node.item()] for node in filtered_edge_index[1]]],
                                                 device=args.devices[1])
-        if args.nn == 'gcn':
+        if args.nn == 'gcn' or args.nn == 'graphconv':
             embeds = self.trainable_nn(embeds, filtered_edge_index)
         else:
             embeds = self.trainable_nn(embeds)
@@ -372,7 +421,7 @@ class Expert(nn.Module):
         return all_preds
 
     def attempt(self, topo_embeds, dataset):
-        if args.nn == 'gcn':
+        if args.nn == 'gcn' or args.nn == 'graphconv':
             rows = t.tensor(dataset.ancs, dtype=t.long)
             cols = t.tensor(dataset.poss, dtype=t.long)
             self.edge_index = t.stack([rows, cols]).to(args.devices[1])
