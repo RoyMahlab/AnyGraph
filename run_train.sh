@@ -1,1 +1,1 @@
-python main.py --dataset link2 --save pretrain_link1 --project anygraph_random_svd_features --run replacing_svd_with_normal_dist_larger_std --use_wandb 
+python main.py --dataset link2 --load pretrain_photo_4e-8 --project anygraph_cora --run photos_baseline --use_wandb
