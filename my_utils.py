@@ -3,7 +3,8 @@ import wandb
 import torch
 import numpy as np
 import random
-
+from pathlib import Path
+import os
 def get_root_directory() -> str:
     # Automatically find and set the root directory
     root = rootutils.setup_root(
@@ -27,3 +28,11 @@ def convert_torch_tensor_to_torch_sparse_coo_tensor(tensor: torch.Tensor) -> tor
     indices = tensor.nonzero().t()
     values = tensor[tensor.nonzero().t().unbind()]
     return torch.sparse_coo_tensor(indices, values, tensor.size())
+
+def save_data(feats: torch.Tensor, dir:str ,root: str, data_name: str) -> None:
+    file_path = Path(root + f'/{dir}/{data_name}/datasets.pkl')
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path = file_path.__str__()
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, 'wb') as fs:
+        torch.save(feats, fs)

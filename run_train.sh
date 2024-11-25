@@ -1,1 +1,1 @@
-python main.py --dataset link2 --save pretrain_link1 --run run2
+python main.py --dataset link2 --save pretrain_link1 --run run2 --latdim 16
