@@ -39,7 +39,7 @@ def plot_histograms(
     for j in range(2):
         plt.figure(figsize=(10, 6))
         for matrix, dataset_name in zip(
-            data[j * jump_size : j * jump_size + jump_size], dataset_names[j * jump_size :]
+            data[j * jump_size :], dataset_names[j * jump_size :]
         ):
             mean = np.mean(matrix)
             variance = np.var(matrix)
