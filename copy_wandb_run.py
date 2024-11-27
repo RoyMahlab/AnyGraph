@@ -5,10 +5,11 @@ wandb.login()
 
 # Set the source and destination projects
 src_entity = "roy-mahlab-ben-gurion-university-of-the-negev"
-src_project = "anygraph_expert_gnn_check"
+src_project = "anygraph_svd"
 dst_entity = "roy-mahlab-ben-gurion-university-of-the-negev"
-dst_project = "dst-project"
+dst_project = "anygraph_no_adj_features"
 
+run_to_copy = "no_input_features_use"
 # Initialize the wandb API
 api = wandb.Api()
 
@@ -16,9 +17,10 @@ api = wandb.Api()
 runs = api.runs(f"{src_entity}/{src_project}")
 
 # Iterate through the runs and copy them to the destination project
+print(len(runs))
 
 for run in runs:
-    if run.name != "baseline":
+    if run.name != run_to_copy:
         continue
     # Get the run history and files
     history = run.history()

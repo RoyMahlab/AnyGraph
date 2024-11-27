@@ -1,1 +1,1 @@
-python main.py --dataset link2 --save pretrain_link1 --run run2 --use_wandb 
+python main.py --dataset link2 --project anygraph_no_adj_features --run no_adj_svd --use_wandb 

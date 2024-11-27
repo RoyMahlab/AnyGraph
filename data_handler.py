@@ -219,7 +219,8 @@ class DataHandler:
             feats = projectors[0]()
             if len(projectors) == 2:
                 feats2 = projectors[1]()
-                feats = feats + feats2
+                # feats = feats + feats2
+                feats = feats2
 
             try:
                 # print(f"{self.trn_input_adj.sum()=}")
