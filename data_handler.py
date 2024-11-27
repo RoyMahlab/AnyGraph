@@ -214,14 +214,15 @@ class DataHandler:
                 tem = self.asym_adj.to(args.devices[0])
                 projectors = [Adj_Projector(tem)]
             if self.feats is not None and args.proj_method != 'adj_svd':
-                tem = self.feats.to(args.devices[0])
+                
+                = self.feats.to(args.devices[0])
                 projectors.append(Feat_Projector(tem))
             assert args.tst_mode == 'tst' and args.trn_mode == 'train-all' or args.tst_mode == 'val' and args.trn_mode == 'fewshot'
             feats = projectors[0]()
-            # save_data(feats, 'adj_matrices', root, self.data_name)
+            save_data(feats, 'adj_matrices', root, self.data_name)
             if len(projectors) == 2:
                 feats2 = projectors[1]()
-                save_data(feats2, 'feat_matrices_svd', root, self.data_name)
+                # save_data(feats2, 'feat_matrices_svd', root, self.data_name)
                 feats = feats + feats2
             try:
                 # print(f"{self.trn_input_adj.sum()=}")
