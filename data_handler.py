@@ -9,7 +9,7 @@ import torch.utils.data as data
 from model import Feat_Projector, Adj_Projector, TopoEncoder
 import os
 
-from my_utils import get_root_directory, save_data
+from my_utils import get_root_directory, save_data, my_load_data
 from pathlib import Path
 root = get_root_directory()
 
@@ -214,14 +214,14 @@ class DataHandler:
                 tem = self.asym_adj.to(args.devices[0])
                 projectors = [Adj_Projector(tem)]
             if self.feats is not None and args.proj_method != 'adj_svd':
-                
-                = self.feats.to(args.devices[0])
+                tem = self.feats.to(args.devices[0])
                 projectors.append(Feat_Projector(tem))
             assert args.tst_mode == 'tst' and args.trn_mode == 'train-all' or args.tst_mode == 'val' and args.trn_mode == 'fewshot'
             feats = projectors[0]()
-            save_data(feats, 'adj_matrices', root, self.data_name)
+            # save_data(feats, 'adj_matrices', root, self.data_name)
             if len(projectors) == 2:
-                feats2 = projectors[1]()
+                feats2 = my_load_data('features_latent_representations', root, self.data_name)
+                # feats2 = projectors[1]()
                 # save_data(feats2, 'feat_matrices_svd', root, self.data_name)
                 feats = feats + feats2
             try:

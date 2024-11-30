@@ -80,12 +80,15 @@ def get_data(data_type:str) -> Tuple[str, str]:
     elif data_type == "adjacency":
         data_folder = "adj_matrices_svd_16"
         output_folder = "datasets_svd_comparison/adj_heat_maps"
+    elif data_type == "latent_features":
+        data_folder = "features_latent_representations"
+        output_folder = "datasets_svd_comparison/latent_feat_heat_maps"
     else:
         raise ValueError("Invalid data type")
     return data_folder, output_folder
 
 def main():
-    data_type = "adjacency"
+    data_type = "latent_features"
     data_folder, output_folder = get_data(data_type)
     create_folder(output_folder)
     data, dataset_names, root = load_data(data_folder)

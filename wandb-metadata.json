@@ -1,0 +1,60 @@
+{
+  "os": "Linux-6.8.0-48-generic-x86_64-with-glibc2.35",
+  "python": "3.10.12",
+  "startedAt": "2024-11-15T10:29:28.652752Z",
+  "args": [
+    "--dataset",
+    "link2",
+    "--save",
+    "pretrain_link1",
+    "--project",
+    "anygraph_expert_gnn_check",
+    "--run",
+    "baseline",
+    "--use_wandb"
+  ],
+  "program": "/home/roymahlab/projects/AnyGraph/main.py",
+  "codePath": "main.py",
+  "git": {
+    "remote": "git@github.com:RoyMahlab/AnyGraph.git",
+    "commit": "20fdfddc8a932824f2bc2e6d70f125cf0595ef12"
+  },
+  "email": "mahlabr@post.bgu.ac.il",
+  "root": "/home/roymahlab/projects/AnyGraph",
+  "host": "insight-pc-3",
+  "username": "roymahlab",
+  "executable": "/home/roymahlab/projects/AnyGraph/my_new_venv/bin/python",
+  "codePathLocal": "main.py",
+  "cpu_count": 10,
+  "cpu_count_logical": 20,
+  "gpu": "NVIDIA RTX A5000",
+  "gpu_count": 2,
+  "disk": {
+    "/": {
+      "total": "244012802048",
+      "used": "13924171776"
+    }
+  },
+  "memory": {
+    "total": "134751031296"
+  },
+  "cpu": {
+    "count": 10,
+    "countLogical": 20
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA RTX A5000",
+      "memoryTotal": "25757220864",
+      "cudaCores": 8192,
+      "architecture": "Ampere"
+    },
+    {
+      "name": "NVIDIA RTX A5000",
+      "memoryTotal": "25757220864",
+      "cudaCores": 8192,
+      "architecture": "Ampere"
+    }
+  ],
+  "cudaVersion": "12.4"
+}

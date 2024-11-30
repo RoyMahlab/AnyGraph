@@ -50,10 +50,9 @@ class TopoEncoder(nn.Module):
             if args.gnn_layer == 0:
                 final_embeds = embeds
             else:
-                pass
-                # embeds = embeds.to_sparse().to(args.devices[0]) 
-                # final_embeds = t.zeros_like(embeds)
-                # t.cuda.empty_cache()
+                embeds = embeds.to_sparse().to(args.devices[0]) 
+                final_embeds = t.zeros_like(embeds)
+                t.cuda.empty_cache()
                 # embeds = embeds.to_sparse().detach().cpu()
                 # final_embeds = t.zeros_like(embeds)
                 # adj = adj.detach().cpu()
@@ -207,7 +206,7 @@ class Adj_Projector(nn.Module):
             svd_v = t.concat([svd_v, t.zeros([svd_v.shape[0], args.latdim-dim]).to(args.devices[0])], dim=1)
             s = t.concat([s, t.zeros(args.latdim-dim).to(args.devices[0])])
         else:
-            svd_u, s, svd_v = t.svd_lowrank(adj, q=q, niter=args.niter)
+            svd_u, s, svd_v = t.svd_lowrank(adj.to_dense(), q=q, niter=args.niter)
             
         svd_u = svd_u @ t.diag(t.sqrt(s))
         svd_v = svd_v @ t.diag(t.sqrt(s))
@@ -237,7 +236,7 @@ class Expert(nn.Module):
         self.reset_parameters()
     
     def forward(self, projectors, pck_nodes=None):
-        embeds = projectors.to(args.devices[1])
+        embeds = projectors.to(args.devices[1]).to_dense()
         if pck_nodes is not None:
             embeds = embeds[pck_nodes]
         embeds = self.trainable_nn(embeds)
@@ -304,8 +303,8 @@ class Expert(nn.Module):
         cand_embeds = final_embeds[-cand_size:]
 
         mask_mat = t.sparse.FloatTensor(trn_mask, t.ones(trn_mask.shape[1]).to(args.devices[1]), t.Size([ancs.shape[0], cand_size]))
-        # dense_mat = mask_mat.to_dense()
-        all_preds = anc_embeds @ cand_embeds.T * (1 - mask_mat) - mask_mat * 1e8
+        dense_mat = mask_mat.to_dense()
+        all_preds = anc_embeds @ cand_embeds.T * (1 - dense_mat) - dense_mat * 1e8
         return all_preds
 
     def attempt(self, topo_embeds, dataset):

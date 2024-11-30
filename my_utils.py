@@ -36,3 +36,10 @@ def save_data(feats: torch.Tensor, dir:str ,root: str, data_name: str) -> None:
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'wb') as fs:
         torch.save(feats, fs)
+        
+def my_load_data(dir:str ,root: str, data_name: str) -> torch.Tensor:
+    file_path = Path(root + f'/{dir}/{data_name}/latent_representations.pth')
+    file_path = file_path.__str__()
+    with open(file_path, 'rb') as fs:
+        feats = torch.load(fs).detach().cpu()
+    return feats

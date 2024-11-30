@@ -1,1 +1,1 @@
-python main.py --dataset link2 --run run2 --latdim 16
+python main.py --dataset link2 --latdim 32 --project latent_space_exploration --run second_try --use_wandb

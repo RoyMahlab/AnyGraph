@@ -21,7 +21,10 @@ def load_data(dir: str) -> Tuple[List[np.array], List[str], str]:
     dir_path = Path(root + f"/{dir}")
     for dir in dir_path.iterdir():
         for file in dir.iterdir():
-            matrix = torch.load(file).numpy()
+            matrix = torch.load(file)
+            if matrix.device.type == "cuda":
+                matrix = matrix.detach().cpu()
+            matrix = matrix.numpy()
             dataset_names.append(dir.name)
             data.append(matrix)
     return data, dataset_names, root

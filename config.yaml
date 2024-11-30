@@ -1,0 +1,109 @@
+_wandb:
+    value:
+        cli_version: 0.18.6
+        m: []
+        python_version: 3.10.12
+        t:
+            "1":
+                - 55
+            "2":
+                - 55
+            "3":
+                - 2
+                - 3
+                - 13
+                - 16
+                - 23
+                - 55
+            "4": 3.10.12
+            "5": 0.18.6
+            "8":
+                - 5
+            "12": 0.18.6
+            "13": linux-x86_64
+act:
+    value: relu
+anchor:
+    value: 256
+attempt_cache:
+    value: 10000000
+batch:
+    value: 4096
+dataset_setting:
+    value: link2
+devices:
+    value:
+        - cuda:0
+        - cuda:0
+drop_rate:
+    value: 0.1
+epoch:
+    value: 50
+epoch_max_step:
+    value: -1
+eval_loss:
+    value: true
+expert_num:
+    value: 8
+fc_layer:
+    value: 8
+featdim:
+    value: 768
+gnn_layer:
+    value: 3
+gpu:
+    value: "0"
+gt_layer:
+    value: 2
+head:
+    value: 4
+latdim:
+    value: 512
+leaky:
+    value: 0.5
+load_model:
+    value: null
+loss:
+    value: ce
+lr:
+    value: 0.0001
+niter:
+    value: 2
+nn:
+    value: mlp
+node_num:
+    value: 48362
+proj_method:
+    value: both
+proj_trn_steps:
+    value: 100
+project:
+    value: anygraph_expert_gnn_check
+ratio_fewshot:
+    value: 0.1
+reca_range:
+    value: 0.2
+reg:
+    value: 1e-07
+run:
+    value: baseline
+save_path:
+    value: pretrain_link1
+scale_layer:
+    value: 10
+selfloop:
+    value: 0
+topk:
+    value: 20
+trn_mode:
+    value: train-all
+tst_batch:
+    value: 256
+tst_epoch:
+    value: 1
+tst_mode:
+    value: tst
+tst_steps:
+    value: -1
+use_wandb:
+    value: true

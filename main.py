@@ -311,7 +311,7 @@ if __name__ == '__main__':
         'products_tech', #'yelp2018', #'yelp_textfeat', 'products_home', #'steam_textfeat', 'amazon_textfeat', 'amazon-book', 'citation-2019', 'citation-classic', 'pubmed', 'citeseer', 'ppa', 'p2p-Gnutella06', 'soc-Epinions1', 'email-Enron',
     ]
     datasets['link2'] = [
-        'Photo', 'Fitness', 'Goodreads', 'ml1m', 'ml10m', 'gowalla', 'arxiv', 'arxiv-ta', 'cora', 'CS', #'collab', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'ddi', 'web-Stanford', 'roadNet-PA',
+        'Photo', #'Fitness', #'Goodreads', 'ml1m', 'ml10m', 'gowalla', 'arxiv', 'arxiv-ta', 'cora', 'CS', 'collab', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'ddi', 'web-Stanford', 'roadNet-PA',
     ]
 
     if args.dataset_setting in datasets.keys():
@@ -337,10 +337,8 @@ if __name__ == '__main__':
         handler = MultiDataHandler(trn_datasets, [tst_datasets])
     else:
         handler = MultiDataHandler(trn_datasets, [trn_datasets, tst_datasets])
-        
-    exit(0)
     log('Load Data')
-
+    
     if args.use_wandb:
         print(f"{args.use_wandb=}")
         initialize_wandb(args)
