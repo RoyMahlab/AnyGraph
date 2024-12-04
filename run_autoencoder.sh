@@ -15,10 +15,10 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run compare_features_decomposition.py
-python datasets_svd_comparison/compare_features_decomposition.py
-if [ $? -ne 0 ]; then
-    echo "Error: compare_features_decomposition.py failed. Exiting."
-    exit 1
-fi
+# python datasets_svd_comparison/compare_features_decomposition.py
+# if [ $? -ne 0 ]; then
+#     echo "Error: compare_features_decomposition.py failed. Exiting."
+#     exit 1
+# fi
 
 echo "All scripts executed successfully."

@@ -6,13 +6,14 @@ import torch.nn.functional as F
 class Encoder(nn.Module):
     def __init__(self, input_dim, latent_dim):
         super(Encoder, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 128)
-        self.bn1 = nn.BatchNorm1d(128)
-        self.fc2 = nn.Linear(128, 256)
-        self.bn2 = nn.BatchNorm1d(256)
-        self.fc3 = nn.Linear(256, 128)
-        self.bn3 = nn.BatchNorm1d(128)
-        self.fc4 = nn.Linear(128, latent_dim)
+        layers_sizes = [input_dim*2, input_dim*4, input_dim*2]
+        self.fc1 = nn.Linear(input_dim, layers_sizes[0])
+        self.bn1 = nn.BatchNorm1d(layers_sizes[0])
+        self.fc2 = nn.Linear(layers_sizes[0], layers_sizes[1])
+        self.bn2 = nn.BatchNorm1d(layers_sizes[1])
+        self.fc3 = nn.Linear(layers_sizes[1], layers_sizes[2])
+        self.bn3 = nn.BatchNorm1d(layers_sizes[2])
+        self.fc4 = nn.Linear(layers_sizes[2], latent_dim)
 
     def forward(self, x):
         x = F.dropout(F.relu(self.bn1(self.fc1(x))), p=0.1, training=self.training)
@@ -25,13 +26,14 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, latent_dim, output_dim):
         super(Decoder, self).__init__()
-        self.fc1 = nn.Linear(latent_dim, 128)
-        self.bn1 = nn.BatchNorm1d(128)
-        self.fc2 = nn.Linear(128, 256)
-        self.bn2 = nn.BatchNorm1d(256)
-        self.fc3 = nn.Linear(256, 128)
-        self.bn3 = nn.BatchNorm1d(128)
-        self.fc4 = nn.Linear(128, output_dim)
+        layers_sizes = [latent_dim*2, latent_dim*4, latent_dim*2]
+        self.fc1 = nn.Linear(latent_dim, layers_sizes[0])
+        self.bn1 = nn.BatchNorm1d(layers_sizes[0])
+        self.fc2 = nn.Linear(layers_sizes[0], layers_sizes[1])
+        self.bn2 = nn.BatchNorm1d(layers_sizes[1])
+        self.fc3 = nn.Linear(layers_sizes[1], layers_sizes[2])
+        self.bn3 = nn.BatchNorm1d(layers_sizes[2])
+        self.fc4 = nn.Linear(layers_sizes[2], latent_dim)
 
     def forward(self, x):
         x = F.dropout(F.relu(self.bn1(self.fc1(x))), p=0.1, training=self.training)

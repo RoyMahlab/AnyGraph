@@ -14,11 +14,11 @@ def get_root_directory() -> str:
     return root
 
 
-def get_data() -> List[torch.Tensor]:
+def get_data(data_dir: str) -> List[torch.Tensor]:
     # Load data
     datasets, dataset_names = [], []
     root = get_root_directory()
-    dir_path = Path(root + "/feat_matrices_svd")
+    dir_path = Path(root) / Path(data_dir) #"/feat_matrices_svd")
     for dir in dir_path.iterdir():
         for file in dir.iterdir():
             matrix = torch.load(file)
@@ -28,7 +28,7 @@ def get_data() -> List[torch.Tensor]:
 
 
 def get_dataloaders(args: Dict) -> Tuple[List[DataLoader], List[str], str]:
-    datasets, dataset_names, root = get_data()
+    datasets, dataset_names, root = get_data(args.data_dir)
     data_loaders = []
     for dataset in datasets:
         dataset = TensorDataset(dataset)

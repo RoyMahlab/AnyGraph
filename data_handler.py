@@ -220,9 +220,9 @@ class DataHandler:
             feats = projectors[0]()
             # save_data(feats, 'adj_matrices', root, self.data_name)
             if len(projectors) == 2:
-                feats2 = my_load_data('features_latent_representations', root, self.data_name)
+                feats2 = my_load_data('features_latent_representations_512', root, self.data_name)
                 # feats2 = projectors[1]()
-                # save_data(feats2, 'feat_matrices_svd', root, self.data_name)
+                # save_data(feats2, 'feat_matrices_svd_512', root, self.data_name)
                 feats = feats + feats2
             try:
                 # print(f"{self.trn_input_adj.sum()=}")

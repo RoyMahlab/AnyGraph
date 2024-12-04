@@ -88,7 +88,7 @@ def main():
     reconstruction_loss = nn.MSELoss().to(device)
     train(model, data_loaders, optimizer, reconstruction_loss, args, device)
     # After training
-    torch.save(model, f"{root}/autoencoder/autoencoder.pth")
+    torch.save(model.state_dict(), f"{root}/autoencoder/autoencoder_state_dict.pth")
 
 
 if __name__ == "__main__":
