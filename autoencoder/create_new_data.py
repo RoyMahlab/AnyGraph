@@ -27,10 +27,10 @@ def main():
     autoencoder = load_model(root, args, device)
     autoencoder.eval()
     output_dir = "features_latent_representations_512"
-    file_name = "Photo_latent_representations_512.pth"
+    file_name = "latent_representations.pth"
     new_data_path = Path(root + f"/{output_dir}")
     for dataset, dataset_name in zip(datasets, dataset_names):
-        if dataset_name != "Photo":
+        if dataset_name != "cora" and dataset_name != "arxiv":
             continue
         print(f"Processing {dataset_name}")
         with torch.no_grad():

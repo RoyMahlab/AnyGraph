@@ -94,3 +94,5 @@ adj_matrices_svd/
 feat_matrices_svd/
 adj_matrices_svd_16/
 feat_matrices_svd_512/
+features_latent_representations_512/
+History/
