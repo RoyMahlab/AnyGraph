@@ -56,6 +56,7 @@ class Exp:
         stloc = 0
         if args.load_model != None:
             self.load_model()
+            stloc = args.epoch - 1
             # stloc = len(self.metrics["TrainLoss"]) * args.tst_epoch - (
             #     args.tst_epoch - 1
             # )
@@ -434,8 +435,22 @@ if __name__ == "__main__":
         "products_tech",  #'yelp2018', #'yelp_textfeat', 'products_home', #'steam_textfeat', 'amazon_textfeat', 'amazon-book', 'citation-2019', 'citation-classic', 'pubmed', 'citeseer', 'ppa', 'p2p-Gnutella06', 'soc-Epinions1', 'email-Enron',
     ]
     datasets["link2"] = [
-        "cora"  # "Photo",  #'Fitness', #'Goodreads', 'ml1m', 'ml10m', 'gowalla', 'arxiv', 'arxiv-ta', 'cora', 'CS', 'collab', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'ddi', 'web-Stanford', 'roadNet-PA',
+        "arxiv"  #'Fitness', #'Goodreads', 'ml1m', 'ml10m', 'gowalla', 'arxiv', 'arxiv-ta', 'cora', 'CS', 'collab', 'proteins_spec0', 'proteins_spec1', 'proteins_spec2', 'proteins_spec3', 'ddi', 'web-Stanford', 'roadNet-PA',
     ]
+    datasets["Photo"] = ["Photo"]
+    datasets["arxiv"] = ["arxiv"]
+    datasets["cora"] = ["cora"]
+
+    if args.save_feature_matrices_path != None:
+        datasets["link2"] = [
+            "arxiv",
+            "Fitness",
+            "Goodreads",
+            "arxiv-ta",
+            "cora",
+            "CS",
+            "Photo",
+        ]
 
     if args.dataset_setting in datasets.keys():
         trn_datasets = tst_datasets = datasets[args.dataset_setting]
@@ -461,7 +476,8 @@ if __name__ == "__main__":
     else:
         handler = MultiDataHandler(trn_datasets, [trn_datasets, tst_datasets])
     log("Load Data")
-
+    if args.save_feature_matrices_path != None:
+        exit(0)
     if args.use_wandb:
         print(f"{args.use_wandb=}")
         initialize_wandb(args)

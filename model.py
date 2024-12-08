@@ -6,34 +6,38 @@ import numpy as np
 from Utils.TimeLogger import log
 from torch.nn import MultiheadAttention
 from time import time
+import scipy
+from typing import Tuple
 
 init = nn.init.xavier_uniform_
 uniformInit = nn.init.uniform_
+
 
 class FeedForwardLayer(nn.Module):
     def __init__(self, in_feat, out_feat, bias=True, act=None):
         super(FeedForwardLayer, self).__init__()
         self.linear = nn.Linear(in_feat, out_feat, bias=bias)
-        
-        if act == 'identity' or act is None:
+
+        if act == "identity" or act is None:
             self.act = None
-        elif act == 'leaky':
+        elif act == "leaky":
             self.act = nn.LeakyReLU(negative_slope=args.leaky)
-        elif act == 'relu':
+        elif act == "relu":
             self.act = nn.ReLU()
-        elif act == 'relu6':
+        elif act == "relu6":
             self.act = nn.ReLU6()
         else:
-            raise Exception('Error')
+            raise Exception("Error")
         self.reset_parameters()
 
     def forward(self, embeds):
         if self.act is None:
             return self.linear(embeds)
         return self.act(self.linear(embeds))
-    
+
     def reset_parameters(self):
         self.linear.reset_parameters()
+
 
 class TopoEncoder(nn.Module):
     def __init__(self):
@@ -50,12 +54,10 @@ class TopoEncoder(nn.Module):
             if args.gnn_layer == 0:
                 final_embeds = embeds
             else:
-                embeds = embeds.to_sparse().to(args.devices[0]) 
-                final_embeds = t.zeros_like(embeds)
-                t.cuda.empty_cache()
-                # embeds = embeds.to_sparse().detach().cpu()
+                pass
+                # embeds = embeds.to_sparse().to(args.devices[0])
                 # final_embeds = t.zeros_like(embeds)
-                # adj = adj.detach().cpu()
+                # t.cuda.empty_cache()
             for _ in range(args.gnn_layer):
                 embeds = t.spmm(adj, embeds)
                 final_embeds += embeds
@@ -63,25 +65,38 @@ class TopoEncoder(nn.Module):
                     t.cuda.empty_cache()
             embeds = final_embeds
         return embeds
-    
+
     def reset_parameters(self):
         # Reset parameters for LayerNorm if needed
         self.layer_norm.reset_parameters()
+
 
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
         # Dense layers and layer norms are initialized as sequential layers
-        self.dense_layers = nn.Sequential(*[FeedForwardLayer(args.latdim, args.latdim, bias=True, act=args.act) for _ in range(args.fc_layer)])
-        self.layer_norms = nn.Sequential(*[nn.LayerNorm(args.latdim, elementwise_affine=True) for _ in range(args.fc_layer)])
+        self.dense_layers = nn.Sequential(
+            *[
+                FeedForwardLayer(args.latdim, args.latdim, bias=True, act=args.act)
+                for _ in range(args.fc_layer)
+            ]
+        )
+        self.layer_norms = nn.Sequential(
+            *[
+                nn.LayerNorm(args.latdim, elementwise_affine=True)
+                for _ in range(args.fc_layer)
+            ]
+        )
         self.dropout = nn.Dropout(p=args.drop_rate)
         self.reset_parameters()
-    
+
     def forward(self, embeds):
         for i in range(args.fc_layer):
-            embeds = self.layer_norms[i](self.dropout(self.dense_layers[i](embeds)) + embeds)
+            embeds = self.layer_norms[i](
+                self.dropout(self.dense_layers[i](embeds)) + embeds
+            )
         return embeds
-    
+
     def reset_parameters(self):
         # Reset parameters of each dense layer and layer norm
         for layer in self.dense_layers:
@@ -89,41 +104,52 @@ class MLP(nn.Module):
         for norm in self.layer_norms:
             norm.reset_parameters()
 
+
 class GTLayer(nn.Module):
     def __init__(self):
         super(GTLayer, self).__init__()
         # Initialize MultiheadAttention, dense layers, and layer norms
-        self.multi_head_attention = MultiheadAttention(args.latdim, args.head, dropout=0.1, bias=False)
-        self.dense_layers = nn.Sequential(*[FeedForwardLayer(args.latdim, args.latdim, bias=True, act=args.act) for _ in range(2)])
+        self.multi_head_attention = MultiheadAttention(
+            args.latdim, args.head, dropout=0.1, bias=False
+        )
+        self.dense_layers = nn.Sequential(
+            *[
+                FeedForwardLayer(args.latdim, args.latdim, bias=True, act=args.act)
+                for _ in range(2)
+            ]
+        )
         self.layer_norm1 = nn.LayerNorm(args.latdim, elementwise_affine=True)
         self.layer_norm2 = nn.LayerNorm(args.latdim, elementwise_affine=True)
         self.fc_dropout = nn.Dropout(p=args.drop_rate)
         self.reset_parameters()
-    
+
     def _pick_anchors(self, embeds):
         perm = t.randperm(embeds.shape[0])
-        anchors = perm[:args.anchor]
+        anchors = perm[: args.anchor]
         return embeds[anchors]
-    
+
     def forward(self, embeds):
         anchor_embeds = self._pick_anchors(embeds)
         _anchor_embeds, _ = self.multi_head_attention(anchor_embeds, embeds, embeds)
         anchor_embeds = _anchor_embeds + anchor_embeds
-        _embeds, _ = self.multi_head_attention(embeds, anchor_embeds, anchor_embeds, need_weights=False)
+        _embeds, _ = self.multi_head_attention(
+            embeds, anchor_embeds, anchor_embeds, need_weights=False
+        )
         embeds = self.layer_norm1(_embeds + embeds)
         _embeds = self.fc_dropout(self.dense_layers(embeds))
         embeds = self.layer_norm2(_embeds + embeds)
         return embeds
-    
+
     def reset_parameters(self):
         # Reset parameters of MultiheadAttention, dense layers, and layer norms
         self.multi_head_attention.reset_parameters()
-        
+
         for layer in self.dense_layers:
             layer.reset_parameters()
-        
+
         for norm in [self.layer_norm1, self.layer_norm2]:
             norm.reset_parameters()
+
 
 class GraphTransformer(nn.Module):
     def __init__(self):
@@ -136,23 +162,24 @@ class GraphTransformer(nn.Module):
         for i, layer in enumerate(self.gt_layers):
             embeds = layer(embeds) / args.scale_layer
         return embeds
-    
+
     def reset_parameters(self):
         # Reset parameters of all GTLayer instances
         for layer in self.gt_layers:
             layer.reset_parameters()
 
+
 class Feat_Projector(nn.Module):
     def __init__(self, feats):
         super(Feat_Projector, self).__init__()
-        
-        if args.proj_method == 'uniform':
+
+        if args.proj_method == "uniform":
             self.proj_embeds = self.uniform_proj(feats)
-        elif args.proj_method == 'svd' or args.proj_method == 'both':
+        elif args.proj_method == "svd" or args.proj_method == "both":
             self.proj_embeds = self.svd_proj(feats)
-        elif args.proj_method == 'random':
+        elif args.proj_method == "random":
             self.proj_embeds = self.random_proj(feats)
-        elif args.proj_method == 'original':
+        elif args.proj_method == "original":
             self.proj_embeds = feats
         self.proj_embeds = t.flip(self.proj_embeds, dims=[-1])
         self.proj_embeds = self.proj_embeds.detach()
@@ -161,11 +188,23 @@ class Feat_Projector(nn.Module):
     def svd_proj(self, feats):
         if args.latdim > feats.shape[0] or args.latdim > feats.shape[1]:
             dim = min(feats.shape[0], feats.shape[1])
-            decom_feats, s, decom_featdim = t.svd_lowrank(feats, q=dim, niter=args.niter)
-            decom_feats = t.concat([decom_feats, t.zeros([decom_feats.shape[0], args.latdim-dim]).to(args.devices[0])], dim=1)
+            decom_feats, s, decom_featdim = t.svd_lowrank(
+                feats, q=dim, niter=args.niter
+            )
+            decom_feats = t.concat(
+                [
+                    decom_feats,
+                    t.zeros([decom_feats.shape[0], args.latdim - dim]).to(
+                        args.devices[0]
+                    ),
+                ],
+                dim=1,
+            )
             s = t.concat([s, t.zeros(args.latdim - dim).to(args.devices[0])])
         else:
-            decom_feats, s, decom_featdim = t.svd_lowrank(feats, q=args.latdim, niter=args.niter)
+            decom_feats, s, decom_featdim = t.svd_lowrank(
+                feats, q=args.latdim, niter=args.niter
+            )
         decom_feats = decom_feats @ t.diag(t.sqrt(s))
         return decom_feats.cpu()
 
@@ -181,18 +220,19 @@ class Feat_Projector(nn.Module):
         return self.proj_embeds
 
     def reset_parameters(self, feats):
-        if args.proj_method == 'uniform':
+        if args.proj_method == "uniform":
             # Reinitialize the uniform projection
             self.proj_embeds = self.uniform_proj(feats)
-        elif args.proj_method == 'random':
+        elif args.proj_method == "random":
             # Reinitialize the random projection
             self.proj_embeds = self.random_proj(feats)
+
 
 class Adj_Projector(nn.Module):
     def __init__(self, adj):
         super(Adj_Projector, self).__init__()
 
-        if args.proj_method == 'adj_svd' or args.proj_method == 'both':
+        if args.proj_method == "adj_svd" or args.proj_method == "both":
             self.proj_embeds = self.svd_proj(adj)
         self.proj_embeds = self.proj_embeds.detach()
         self.reset_parameters(adj)
@@ -202,12 +242,26 @@ class Adj_Projector(nn.Module):
         if args.latdim > adj.shape[0] or args.latdim > adj.shape[1]:
             dim = min(adj.shape[0], adj.shape[1])
             svd_u, s, svd_v = t.svd_lowrank(adj, q=dim, niter=args.niter)
-            svd_u = t.concat([svd_u, t.zeros([svd_u.shape[0], args.latdim-dim]).to(args.devices[0])], dim=1)
-            svd_v = t.concat([svd_v, t.zeros([svd_v.shape[0], args.latdim-dim]).to(args.devices[0])], dim=1)
-            s = t.concat([s, t.zeros(args.latdim-dim).to(args.devices[0])])
+            svd_u = t.concat(
+                [
+                    svd_u,
+                    t.zeros([svd_u.shape[0], args.latdim - dim]).to(args.devices[0]),
+                ],
+                dim=1,
+            )
+            svd_v = t.concat(
+                [
+                    svd_v,
+                    t.zeros([svd_v.shape[0], args.latdim - dim]).to(args.devices[0]),
+                ],
+                dim=1,
+            )
+            s = t.concat([s, t.zeros(args.latdim - dim).to(args.devices[0])])
         else:
-            svd_u, s, svd_v = t.svd_lowrank(adj.to_dense(), q=q, niter=args.niter)
-            
+            svd_u, s, svd_v = t.svd_lowrank(adj, q=q, niter=args.niter)
+            # svd_u, s, svd_v = t.svd_lowrank(adj.to_dense(), q=q, niter=args.niter)
+            # svd_u, s, svd_v = self.scipy_svd_proj(adj)
+
         svd_u = svd_u @ t.diag(t.sqrt(s))
         svd_v = svd_v @ t.diag(t.sqrt(s))
         if adj.shape[0] != adj.shape[1]:
@@ -219,22 +273,59 @@ class Adj_Projector(nn.Module):
     def forward(self):
         return self.proj_embeds
 
+    def scipy_svd_proj(
+        self, adj: t.sparse.FloatTensor
+    ) -> Tuple[t.Tensor, t.Tensor, t.Tensor]:
+        print("adj SVD performed")
+        start = time()
+        # convert adj from torch tensor to scipy tensor
+        local_adj = adj.detach().cpu().coalesce()
+        coo_matrix = scipy.sparse.coo_matrix(
+            (
+                local_adj.values().numpy(),
+                (local_adj.indices()[0].numpy(), local_adj.indices()[1].numpy()),
+            ),
+            shape=local_adj.shape,
+        )
+        # perfrom svd on scipy tensor
+        q = 512
+        niter = 13
+        # convert svd results back to torch tensor
+        while True:
+            try:
+                svd_u, s, svd_vh = scipy.sparse.linalg.svds(
+                    coo_matrix, k=q, maxiter=niter
+                )
+            except Exception as e:
+                print(f"Error: {e}")
+                niter = niter + 1
+                continue
+            break
+        print(f"niter: {niter}")
+        print(f"Time taken for svd: {time() - start}")
+        svd_v = svd_vh.T
+        svd_u = t.from_numpy(svd_u).to(args.devices[0])
+        svd_v = t.from_numpy(svd_v).to(args.devices[0])
+        s = t.from_numpy(s).to(args.devices[0])
+        return svd_u, s, svd_v
+
     def reset_parameters(self, adj):
         # Reinitialize the projection based on the new adj matrix
-        if args.proj_method == 'adj_svd' or args.proj_method == 'both':
+        if args.proj_method == "adj_svd" or args.proj_method == "both":
             self.proj_embeds = self.svd_proj(adj)
+
 
 class Expert(nn.Module):
     def __init__(self):
         super(Expert, self).__init__()
-        
-        if args.nn == 'mlp':
+
+        if args.nn == "mlp":
             self.trainable_nn = MLP().to(args.devices[1])
         else:
             self.trainable_nn = GraphTransformer().to(args.devices[1])
         self.trn_count = 1
         self.reset_parameters()
-    
+
     def forward(self, projectors, pck_nodes=None):
         embeds = projectors.to(args.devices[1]).to_dense()
         if pck_nodes is not None:
@@ -250,7 +341,7 @@ class Expert(nn.Module):
         pos_preds = preds[:pos_preds_num]
         neg_preds = preds[pos_preds_num:].view(neg_preds_shape)
         return pos_preds, neg_preds
-    
+
     def cal_loss(self, batch_data, projectors):
         ancs, poss, negs = list(map(lambda x: x.to(args.devices[1]), batch_data))
         self.trn_count += ancs.shape[0]
@@ -258,28 +349,42 @@ class Expert(nn.Module):
         final_embeds = self.forward(projectors, pck_nodes)
         anc_embeds, pos_embeds, neg_embeds = t.split(final_embeds, [ancs.shape[0]] * 3)
         if final_embeds.isinf().any() or final_embeds.isnan().any():
-            raise Exception('Final embedding fails')
-        
-        if args.loss == 'ce':
-            pos_preds, neg_preds = self.pred_norm((anc_embeds * pos_embeds).sum(-1), anc_embeds @ neg_embeds.T)
-            if pos_preds.isinf().any() or pos_preds.isnan().any() or neg_preds.isinf().any() or neg_preds.isnan().any():
-                raise Exception('Preds fails')
+            raise Exception("Final embedding fails")
+
+        if args.loss == "ce":
+            pos_preds, neg_preds = self.pred_norm(
+                (anc_embeds * pos_embeds).sum(-1), anc_embeds @ neg_embeds.T
+            )
+            if (
+                pos_preds.isinf().any()
+                or pos_preds.isnan().any()
+                or neg_preds.isinf().any()
+                or neg_preds.isnan().any()
+            ):
+                raise Exception("Preds fails")
             pos_loss = pos_preds
             neg_loss = (neg_preds.exp().sum(-1) + pos_preds.exp() + 1e-8).log()
             pre_loss = -(pos_loss - neg_loss).mean()
-        elif args.loss == 'bpr':
+        elif args.loss == "bpr":
             pos_preds = (anc_embeds * pos_embeds).sum(-1)
             neg_preds = (anc_embeds * neg_embeds).sum(-1)
             pos_loss, neg_loss = pos_preds, neg_preds
-            pre_loss = -((pos_preds - neg_preds).sigmoid() + 1e-10).log().mean() 
+            pre_loss = -((pos_preds - neg_preds).sigmoid() + 1e-10).log().mean()
 
         if t.isinf(pre_loss).any() or t.isnan(pre_loss).any():
-            raise Exception('NaN or Inf')
+            raise Exception("NaN or Inf")
 
-        reg_loss = sum(list(map(lambda W: W.norm(2).square() * args.reg, self.parameters())))
-        loss_dict = {'preloss': pre_loss, 'regloss': reg_loss, 'posloss': pos_loss.mean(), 'negloss': neg_loss.mean()}
+        reg_loss = sum(
+            list(map(lambda W: W.norm(2).square() * args.reg, self.parameters()))
+        )
+        loss_dict = {
+            "preloss": pre_loss,
+            "regloss": reg_loss,
+            "posloss": pos_loss.mean(),
+            "negloss": neg_loss.mean(),
+        }
         return pre_loss + reg_loss, loss_dict
-    
+
     def pred_for_test(self, batch_data, cand_size, projectors, rerun_embed=True):
         ancs, trn_mask = list(map(lambda x: x.to(args.devices[1]), batch_data))
         if rerun_embed:
@@ -291,28 +396,37 @@ class Expert(nn.Module):
                 temlen = projectors.shape[0] // div
                 for i in range(temlen):
                     st, ed = div * i, div * (i + 1)
-                    tem_projectors = projectors[st: ed, :]
+                    tem_projectors = projectors[st:ed, :]
                     final_embeds_list.append(self.forward(tem_projectors))
                 if temlen * div < projectors.shape[0]:
-                    tem_projectors = projectors[temlen*div:, :]
+                    tem_projectors = projectors[temlen * div :, :]
                     final_embeds_list.append(self.forward(tem_projectors))
                 final_embeds = t.concat(final_embeds_list, dim=0)
             self.final_embeds = final_embeds
         final_embeds = self.final_embeds
-        anc_embeds = final_embeds[ancs]
-        cand_embeds = final_embeds[-cand_size:]
+        anc_embeds = final_embeds[ancs].to(args.devices[1])
+        cand_embeds = final_embeds[-cand_size:].to(args.devices[1])
 
-        mask_mat = t.sparse.FloatTensor(trn_mask, t.ones(trn_mask.shape[1]).to(args.devices[1]), t.Size([ancs.shape[0], cand_size]))
+        mask_mat = t.sparse.FloatTensor(
+            trn_mask,
+            t.ones(trn_mask.shape[1]).to(args.devices[1]),
+            t.Size([ancs.shape[0], cand_size]),
+        ).to(args.devices[1])
         dense_mat = mask_mat.to_dense()
         all_preds = anc_embeds @ cand_embeds.T * (1 - dense_mat) - dense_mat * 1e8
         return all_preds
 
     def attempt(self, topo_embeds, dataset):
         final_embeds = self.trainable_nn(topo_embeds)
-        rows, cols, negs = list(map(lambda x: t.from_numpy(x).long().to(args.devices[1]), [dataset.ancs, dataset.poss, dataset.negs]))
+        rows, cols, negs = list(
+            map(
+                lambda x: t.from_numpy(x).long().to(args.devices[1]),
+                [dataset.ancs, dataset.poss, dataset.negs],
+            )
+        )
         if rows.shape[0] > args.attempt_cache:
             random_perm = t.randperm(rows.shape[0], device=args.devices[0])
-            pck_perm = random_perm[:args.attempt_cache]
+            pck_perm = random_perm[: args.attempt_cache]
             rows = rows[pck_perm]
             cols = cols[pck_perm]
             negs = negs[pck_perm]
@@ -321,12 +435,20 @@ class Expert(nn.Module):
                 row_embeds = final_embeds[rows]
                 col_embeds = final_embeds[cols]
                 neg_embeds = final_embeds[negs]
-                score = ((row_embeds * col_embeds).sum(-1) - (row_embeds * neg_embeds).sum(-1)).sigmoid().mean().item()
+                score = (
+                    (
+                        (row_embeds * col_embeds).sum(-1)
+                        - (row_embeds * neg_embeds).sum(-1)
+                    )
+                    .sigmoid()
+                    .mean()
+                    .item()
+                )
                 break
             except Exception:
                 args.attempt_cache = args.attempt_cache // 2
                 random_perm = t.randperm(rows.shape[0], device=args.devices[0])
-                pck_perm = random_perm[:args.attempt_cache]
+                pck_perm = random_perm[: args.attempt_cache]
                 rows = rows[pck_perm]
                 cols = cols[pck_perm]
                 negs = negs[pck_perm]
@@ -340,20 +462,34 @@ class Expert(nn.Module):
         elif isinstance(self.trainable_nn, GraphTransformer):
             self.trainable_nn.reset_parameters()
 
+
 class AnyGraph(nn.Module):
     def __init__(self):
         super(AnyGraph, self).__init__()
         self.experts = nn.ModuleList([Expert() for _ in range(args.expert_num)]).cuda()
-        self.opts = list(map(lambda expert: t.optim.Adam(expert.parameters(), lr=args.lr, weight_decay=0), self.experts))
+        self.opts = list(
+            map(
+                lambda expert: t.optim.Adam(
+                    expert.parameters(), lr=args.lr, weight_decay=0
+                ),
+                self.experts,
+            )
+        )
         self.reset_parameters()
-        
+
     def assign_experts(self, handlers, reca=True, log_assignment=False):
         if args.expert_num == 1:
             self.assignment = [0] * len(handlers)
             return
         try:
-            expert_scores = np.array(list(map(lambda expert: expert.trn_count, self.experts)))
-            expert_scores = (1.0 - expert_scores / np.sum(expert_scores)) * args.reca_range + 1.0 - args.reca_range / 2
+            expert_scores = np.array(
+                list(map(lambda expert: expert.trn_count, self.experts))
+            )
+            expert_scores = (
+                (1.0 - expert_scores / np.sum(expert_scores)) * args.reca_range
+                + 1.0
+                - args.reca_range / 2
+            )
         except Exception:
             expert_scores = np.ones(len(self.experts))
         with t.no_grad():
@@ -368,20 +504,20 @@ class AnyGraph(nn.Module):
                     assignment[dataset_id].append((expert_id, score))
                 assignment[dataset_id].sort(key=lambda x: x[1], reverse=True)
             if log_assignment:
-                print('\n----------\nAssignment')
+                print("\n----------\nAssignment")
                 for dataset_id, handler in enumerate(handlers):
-                    out = ''
+                    out = ""
                     for exp_idx in range(min(4, len(self.experts))):
-                        out += f'({assignment[dataset_id][exp_idx][0]}, {assignment[dataset_id][exp_idx][1]}) '
+                        out += f"({assignment[dataset_id][exp_idx][0]}, {assignment[dataset_id][exp_idx][1]}) "
                     print(handler.data_name, out)
-                print('----------\n')
+                print("----------\n")
 
             self.assignment = list(map(lambda x: x[0][0], assignment))
-    
+
     def summon(self, dataset_id):
         expert_id = self.assignment[dataset_id]
         return self.experts[expert_id], expert_id
-    
+
     def summon_opt(self, dataset_id):
         return self.opts[self.assignment[dataset_id]]
 

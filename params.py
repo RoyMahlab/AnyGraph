@@ -44,5 +44,8 @@ def parse_args():
     parser.add_argument('--project', default='anygraph_example', type=str, help='project name')
     parser.add_argument('--run', default='run1', type=str, help='run name')
     
+    parser.add_argument('--latent_features_path', default=None, help='latent features from autoencoder path')
+    parser.add_argument('--save_adj_matrices_path', default=None, help='save path for adjacency matrices')
+    parser.add_argument('--save_feature_matrices_path', default=None, help='save path for features matrices')
     return parser.parse_args()
 args = parse_args()

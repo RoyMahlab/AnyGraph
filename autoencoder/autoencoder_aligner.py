@@ -5,8 +5,10 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from autoencoder import Autoencoder
 from data_loader import get_dataloaders
+import argparse
 from hyperparameters import get_hyperparameters
 from typing import List, Dict
+
 
 def multi_dataset_cosine_similarity_loss(latents: List):
     latents = [latent / latent.norm(dim=0, keepdim=True) + 1e-8 for latent in latents]
@@ -16,15 +18,22 @@ def multi_dataset_cosine_similarity_loss(latents: List):
         latent_i = latents[i]
         cosine_matrix = torch.mm(latent_i.t(), latent_i)
         diagonal = torch.eye(cosine_matrix.shape[0], device=latent_i.device)
-        same_dataset_cosine_losses.append((cosine_matrix - diagonal).mean()) # Penalize similarity between datasets
+        same_dataset_cosine_losses.append(
+            (cosine_matrix - diagonal).mean()
+        )  # Penalize similarity between datasets
         for j in range(i + 1, len(latents)):
             latent_j = latents[j]
             cosine_matrix = torch.mm(latent_i.t(), latent_j)
-            between_dataset_cosine_losses.append(1 - cosine_matrix.mean())  # Penalize disimilarity between datasets
-    between_dataset_cosine_loss = sum(between_dataset_cosine_losses) / len(between_dataset_cosine_losses)
-    same_dataset_cosine_loss = sum(same_dataset_cosine_losses) / len(same_dataset_cosine_losses)
+            between_dataset_cosine_losses.append(
+                1 - cosine_matrix.mean()
+            )  # Penalize disimilarity between datasets
+    between_dataset_cosine_loss = sum(between_dataset_cosine_losses) / len(
+        between_dataset_cosine_losses
+    )
+    same_dataset_cosine_loss = sum(same_dataset_cosine_losses) / len(
+        same_dataset_cosine_losses
+    )
     return (0.2 * between_dataset_cosine_loss) + (0.8 * same_dataset_cosine_loss)
-
 
 
 def train(
@@ -57,8 +66,8 @@ def train(
             # Compute cosine similarity loss
             loss_cosine = multi_dataset_cosine_similarity_loss(latents)
 
-            loss = (
-                loss_recon + (0.1 * loss_cosine)
+            loss = loss_recon + (
+                0.1 * loss_cosine
             )  # Adjust weight for cosine similarity loss
 
             # Backward pass
@@ -68,28 +77,39 @@ def train(
 
         # Logging
         if args.use_wandb:
-                wandb.log(data={"train_loss": loss.item()}, step=epoch)
+            wandb.log(data={"train_loss": loss.item()}, step=epoch)
         print(f"Epoch {epoch+1}/{args.num_epochs}, Loss: {loss.item():.8f}")
 
 
-def main():
+def main(general_args: Dict):
     torch.manual_seed(42)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = get_hyperparameters()
+    args.data_dir = general_args.data_path
+    args.input_dim = general_args.latent_size
+    args.latent_dim = general_args.latent_size
     if args.use_wandb:
         print(f"{args.use_wandb=}")
-        wandb.init(project=args.project,
-                    name=args.run,
-                    config=dict(args))
+        wandb.init(project=args.project, name=args.run, config=dict(args))
     data_loaders, dataset_names, root = get_dataloaders(args)
     # Model, optimizer, and loss function
+    print(f"args.input_dim: {args.input_dim}, args.latent_dim: {args.latent_dim}")
     model = Autoencoder(args.input_dim, args.latent_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     reconstruction_loss = nn.MSELoss().to(device)
     train(model, data_loaders, optimizer, reconstruction_loss, args, device)
     # After training
-    torch.save(model.state_dict(), f"{root}/autoencoder/autoencoder_state_dict.pth")
+    torch.save(
+        model.state_dict(),
+        f"{root}/autoencoder/autoencoder_state_dict_{general_args.latent_size}.pth",
+    )
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Model Parameters")
+    parser.add_argument("--data_path", default=".", type=str, help="path to data")
+    parser.add_argument(
+        "--latent_size", default=512, type=int, help="latent dimensionality"
+    )
+    general_args = parser.parse_args()
+    main(general_args)

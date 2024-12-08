@@ -218,14 +218,18 @@ class DataHandler:
                 projectors.append(Feat_Projector(tem))
             assert args.tst_mode == 'tst' and args.trn_mode == 'train-all' or args.tst_mode == 'val' and args.trn_mode == 'fewshot'
             feats = projectors[0]()
-            # save_data(feats, 'adj_matrices', root, self.data_name)
+            if args.save_adj_matrices_path != None:
+                save_data(feats, args.save_adj_matrices_path, root, self.data_name)
             if len(projectors) == 2:
-                feats2 = my_load_data('features_latent_representations_512', root, self.data_name)
-                # feats2 = projectors[1]()
-                # save_data(feats2, 'feat_matrices_svd_512', root, self.data_name)
+                if args.latent_features_path != None:
+                    feats2 = my_load_data(args.latent_features_path, root, self.data_name)
+                    print("loaded latent features")
+                else:
+                    feats2 = projectors[1]()
+                if args.save_feature_matrices_path != None:
+                    save_data(feats2, args.save_feature_matrices_path, root, self.data_name)    
                 feats = feats + feats2
             try:
-                # print(f"{self.trn_input_adj.sum()=}")
                 self.projectors = self.topo_encoder(self.trn_input_adj.to(args.devices[0]), feats.to(args.devices[0])).detach().cpu()
             except Exception as e:
                 print(e)
