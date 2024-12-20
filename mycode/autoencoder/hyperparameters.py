@@ -7,11 +7,12 @@ def get_hyperparameters():
             "input_dim": 512,
             "latent_dim": 512,
             "learning_rate": 1e-3,
-            "num_epochs": 100,
+            "num_epochs": 1000,
             "batch_size": 64,
             "use_wandb": False,
             "project": "autoencoder",
             "run": "deeper_autoencoder",
-            "data_dir": "feat_matrices_svd_512"
+            "data_dir": "feat_matrices_svd_512",
+            "gamma": 0.5,
         }
     )

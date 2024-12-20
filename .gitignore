@@ -98,4 +98,4 @@ features_latent_representations_512/
 History/
 feat_matrices_svd_*/
 features_latent_representations_*/
-autoencoder/autoencoder_state_dict*
+*.pth

@@ -1,11 +1,11 @@
 import torch
+import argparse
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from compare_svd_decomposition import load_data
-from typing import List, Tuple
-
+from typing import List, Tuple, Union
 
 def normalize_single_matrix(matrix: np.array):
     col_norms = np.linalg.norm(matrix, axis=0, keepdims=True) + 1e-8
@@ -35,7 +35,7 @@ def plot_heatmaps(
     data: List[np.array],
     dataset_names: List[str],
     output_dir: str,
-    data_type: str = "adjacency",
+    data_type: str,
 ) -> None:
     # Plot the heatmap
     couples = set()
@@ -73,27 +73,23 @@ def plot_heatmaps(
 def create_folder(path: str) -> None:
     Path(path).mkdir(parents=True, exist_ok=True)
 
-def get_data(data_type:str) -> Tuple[str, str]:
-    if data_type == "features":
-        data_folder = "feat_matrices_svd"
-        output_folder = "datasets_svd_comparison/feat_heat_maps"
-    elif data_type == "adjacency":
-        data_folder = "adj_matrices_svd_16"
-        output_folder = "datasets_svd_comparison/adj_heat_maps"
-    elif data_type == "latent_features":
-        data_folder = "features_latent_representations"
-        output_folder = "datasets_svd_comparison/latent_feat_heat_maps"
-    else:
-        raise ValueError("Invalid data type")
-    return data_folder, output_folder
 
 def main():
-    data_type = "latent_features"
-    data_folder, output_folder = get_data(data_type)
-    create_folder(output_folder)
-    data, dataset_names, root = load_data(data_folder)
-    output_path = f"{root}/{output_folder}"
-    plot_heatmaps(data, dataset_names, output_path, data_type)
+    parser = argparse.ArgumentParser(description="Model Parameters")
+    parser.add_argument(
+        "--data_folder", default=".", type=str, help="path to data"
+    )
+    parser.add_argument(
+        "--output_folder", default=".", type=str, help="path to put images in"
+    )
+    parser.add_argument(
+        "--data_type", default="features", type=str, help="what to put on the plots"
+    )
+    args = parser.parse_args()
+    create_folder(args.output_folder)
+    data, dataset_names, root = load_data(args.data_folder)
+    output_path = f"{root}/{args.output_folder}"
+    plot_heatmaps(data, dataset_names, output_path, args.data_type)
 
 
 if __name__ == "__main__":
